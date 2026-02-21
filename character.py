@@ -48,7 +48,7 @@ class Character:
         self.xp += amount
         print(f"{self.name} gained {amount} XP!\n")
 
-        while self.xp > self.xp_to_next:
+        while self.xp >= self.xp_to_next:
             self.level_up()
             print(f"\n🔥 {self.name} LEVELLED UP to Level {self.level}! 🔥")
             # Increase stats
@@ -158,3 +158,4 @@ class Character:
 
         print(f"{self.name} hit {other.name} for {final_damage} damage!")
         print(f"{other.name} has {other.health} HP left.\n")
+

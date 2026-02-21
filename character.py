@@ -92,26 +92,26 @@ class Character:
         except FileNotFoundError:
             print("No save file found.")
 
-        def heal(self, amount):
+    def heal(self):
             heal = self.max_health * 0.25
             self.health += heal
             if self.health > self.max_health:
                 self.health = self.max_health
             print(f"{self.name} healed for {heal} HP! (HP: {self.health})")
 
-        def defend(self):
+    def defend(self):
             self.defense += 10
             print(
                 f"{self.name} is defending! Defense increased to {self.defense} for this turn."
             )
 
-        def end_defend(self):
+    def end_defend(self):
             self.defense -= 10
             print(f"{self.name} stopped defending. Defense back to {self.defense}.")
 
-        def use_item(self, item):
+    def use_item(self, item):
             if item == "health_potion":
-                self.heal(25)
+                self.heal()
             elif item == "defense_potion":
                 self.defend()
             else:

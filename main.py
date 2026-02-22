@@ -33,14 +33,13 @@ def choose_turn_order(player, enemy):
 
 
 def run_battle(player, enemy) -> None:
-    action = get_valid_action()
-
     while player.alive() and enemy.alive():
         first, second = choose_turn_order(player, enemy)
 
         # First actor's turn
         if first == player:
             player.end_defend()
+            action = get_valid_action()
             resolve_player_action(player, enemy, action)
         else:
             enemy.attack(player)
@@ -61,6 +60,7 @@ def finish_battle(player, enemy) -> None:
     if enemy.health == 0:
         print("player wins!!\n")
         player.gain_xp(50)
+        player.gain_gold(20)
     else:
         print("enemy wins!!")
 

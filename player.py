@@ -24,7 +24,7 @@ def create_orc():
 
 
 def choose_character():
-    print("choose your character /n")
+    print("choose your character \n")
     print("1) Ninja")
     print("2) Orc")
 

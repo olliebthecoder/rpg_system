@@ -29,6 +29,8 @@ class Character:
         self.xp = 0
         self.xp_to_next = 100
 
+        self.gold = 0
+
     def save(self):
         data = {
             "name": self.name,
@@ -41,6 +43,7 @@ class Character:
             "speed": self.speed,
             "attack_speed": self.attack_speed,
             "defense": self.defense,
+            "gold": self.gold,
         }
 
         with open(f"{self.name}_save.json", "w") as file:
@@ -52,6 +55,10 @@ class Character:
         self.xp -= self.xp_to_next
         self.level += 1
         self.xp_to_next = int(self.xp_to_next * 1.5)
+
+    def gain_gold(self, amount):
+        self.gold += amount
+        print(f"{self.name} gained {amount} gold! (Total Gold: {self.gold})")
 
     def gain_xp(self, amount):
         self.xp += amount
@@ -86,15 +93,17 @@ class Character:
             with open(f"{self.name}_save.json", "r") as file:
                 data = json.load(file)
 
-            self.level = data["level"]
-            self.xp = data["xp"]
-            self.xp_to_next = data["xp_to_next"]
-            self.max_health = data["max_health"]
-            self.health = data["health"]
-            self.attack_power = data["attack_power"]
-            self.speed = data["speed"]
-            self.attack_speed = data["attack_speed"]
-            self.defense = data["defense"]
+            self.level = data.get("level", self.level)
+            self.xp = data.get("xp", self.xp)
+            self.xp_to_next = data.get("xp_to_next", self.xp_to_next)
+            self.max_health = data.get("max_health", self.max_health)
+            self.health = data.get("health", self.health)
+            self.attack_power = data.get("attack_power", self.attack_power)
+            self.speed = data.get("speed", self.speed)
+            self.attack_speed = data.get("attack_speed", self.attack_speed)
+            self.defense = data.get("defense", self.defense)
+            self.gold = data.get("gold", self.gold)
+            self.crit_chance = data.get("crit_chance", self.crit_chance)
 
             print(f"📂 {self.name} has been loaded!")
 

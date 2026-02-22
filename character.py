@@ -4,7 +4,14 @@ import json
 
 class Character:
     def __init__(
-        self, name, health, attack_power, speed, attack_speed, defense, crit_chance
+        self,
+        name,
+        health,
+        attack_power,
+        speed,
+        attack_speed,
+        defense,
+        crit_chance,
     ):
         self.name = name
         self.health = health
@@ -14,6 +21,8 @@ class Character:
         self.attack_speed = attack_speed
         self.defense = defense
         self.crit_chance = crit_chance
+
+        self.is_defending = False
 
         # Leveling stats
         self.level = 1

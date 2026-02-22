@@ -93,29 +93,38 @@ class Character:
             print("No save file found.")
 
     def heal(self):
-            heal = self.max_health * 0.25
-            self.health += heal
-            if self.health > self.max_health:
-                self.health = self.max_health
-            print(f"{self.name} healed for {heal} HP! (HP: {self.health})")
+        heal = self.max_health * 0.25
+        self.health += heal
+        if self.health > self.max_health:
+            self.health = self.max_health
+        print(f"{self.name} healed for {heal} HP! (HP: {self.health})")
 
     def defend(self):
-            self.defense += 10
-            print(
-                f"{self.name} is defending! Defense increased to {self.defense} for this turn."
-            )
+        if self.is_defending:
+            print(f"{self.name} is already defending.")
+            return
+
+        self.defense += 10
+        self.is_defending = True
+        print(
+            f"{self.name} is defending! Defense increased to {self.defense} for this turn."
+        )
 
     def end_defend(self):
-            self.defense -= 10
-            print(f"{self.name} stopped defending. Defense back to {self.defense}.")
+        if not self.is_defending:
+            return
+
+        self.defense -= 10
+        self.is_defending = False
+        print(f"{self.name} stopped defending. Defense back to {self.defense}.")
 
     def use_item(self, item):
-            if item == "health_potion":
-                self.heal()
-            elif item == "defense_potion":
-                self.defend()
-            else:
-                print("Unknown item!")
+        if item == "health_potion":
+            self.heal()
+        elif item == "defense_potion":
+            self.defend()
+        else:
+            print("Unknown item!")
 
     def attack(self, other):
 
@@ -126,7 +135,7 @@ class Character:
         dodge_chance = other.speed - self.attack_speed
 
         # makes chance to dodge between 5% and 70%
-        dodge_chance = max(5, min(60, dodge_chance))
+        dodge_chance = max(5, min(70, dodge_chance))
 
         dodge_roll = random.randint(1, 100)
 
@@ -158,4 +167,3 @@ class Character:
 
         print(f"{self.name} hit {other.name} for {final_damage} damage!")
         print(f"{other.name} has {other.health} HP left.\n")
-

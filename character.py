@@ -30,6 +30,8 @@ class Character:
         self.xp_to_next = 100
 
         self.gold = 0
+        # inventory: map item name -> quantity
+        self.inventory = {}
 
     def save(self):
         data = {
@@ -44,6 +46,7 @@ class Character:
             "attack_speed": self.attack_speed,
             "defense": self.defense,
             "gold": self.gold,
+            "inventory": self.inventory,
         }
 
         with open(f"{self.name}_save.json", "w") as file:
@@ -103,6 +106,7 @@ class Character:
             self.attack_speed = data.get("attack_speed", self.attack_speed)
             self.defense = data.get("defense", self.defense)
             self.gold = data.get("gold", self.gold)
+            self.inventory = data.get("inventory", self.inventory)
             self.crit_chance = data.get("crit_chance", self.crit_chance)
 
             print(f"📂 {self.name} has been loaded!")
@@ -116,6 +120,50 @@ class Character:
         if self.health > self.max_health:
             self.health = self.max_health
         print(f"{self.name} healed for {heal} HP! (HP: {self.health})")
+
+    def add_item(self, item_name: str, qty: int = 1):
+        key = item_name.title()
+        self.inventory[key] = self.inventory.get(key, 0) + qty
+        print(f"{self.name} received {qty} x {key} (Total: {self.inventory[key]})")
+
+    def remove_item(self, item_name: str, qty: int = 1) -> bool:
+        key = item_name.title()
+        count = self.inventory.get(key, 0)
+        if count < qty:
+            return False
+        if count == qty:
+            del self.inventory[key]
+        else:
+            self.inventory[key] = count - qty
+        return True
+
+    def use_item(self, item_name: str) -> None:
+        key = item_name.title()
+        if self.inventory.get(key, 0) <= 0:
+            print(f"No {key} in inventory.")
+            return
+
+        # Health Potion: heals 25% max HP
+        if key == "Health Potion":
+            self.remove_item(key, 1)
+            self.heal()
+            return
+
+        # Defense Potion: apply defend for one turn
+        if key == "Defense Potion":
+            self.remove_item(key, 1)
+            self.defend()
+            return
+
+        print(f"{key} can't be used right now.")
+
+    def show_inventory(self) -> None:
+        if not self.inventory:
+            print("Inventory is empty.")
+            return
+        print("Inventory:")
+        for item, qty in self.inventory.items():
+            print(f"- {item}: {qty}")
 
     def defend(self):
         if self.is_defending:

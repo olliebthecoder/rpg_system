@@ -7,8 +7,10 @@ from player import choose_character
 def get_valid_action() -> str:
     """Prompt until the player enters a valid action."""
     while True:
-        action = input("Do you want to 1.attack, 2.defend, or 3.heal? ").strip()
-        if action in {"1", "2", "3"}:
+        action = input(
+            "Do you want to 1.attack, 2.defend, 3.heal, or 4.use item? "
+        ).strip()
+        if action in {"1", "2", "3", "4"}:
             return action
         print("Invalid action. Enter 1, 2, or 3.")
 
@@ -20,6 +22,11 @@ def resolve_player_action(player, target, action: str) -> None:
         player.defend()
     elif action == "3":
         player.heal()
+    elif action == "4":
+        player.show_inventory()
+        choice = input("Enter item name to use: ")
+        if choice:
+            player.use_item(choice)
 
 
 def choose_turn_order(player, enemy):
@@ -78,25 +85,28 @@ def finish_battle(player, enemy) -> None:
 
 def shop(player) -> None:
     print(f"Welcome to the shop! You have {player.gold} gold.")
-    print("1) Health Potion (10 gold) - Heals 25% of your max health")
-    print("2) Defense Potion (15 gold) - Increases defense by 10 for one turn")
-    print("3) Exit Shop")
+    print("1) Health Potion (10 gold) - heals 25% when used")
+    print("2) Defense Potion (15 gold) - +defend when used")
+    print("3) View Inventory")
+    print("4) Exit Shop")
 
     buy = input("> ")
-    while buy != "3":
+    while buy != "4":
         if buy == "1":
             if player.gold >= 10:
                 player.gold -= 10
-                player.heal()
+                player.add_item("Health Potion", 1)
             else:
                 print("Not enough gold!")
         elif buy == "2":
             if player.gold >= 15:
                 player.gold -= 15
-                player.defend()
+                player.add_item("Defense Potion", 1)
             else:
                 print("Not enough gold!")
         elif buy == "3":
+            player.show_inventory()
+        elif buy == "4":
             print("Thanks for visiting the shop!")
             break
         else:

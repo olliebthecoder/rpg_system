@@ -38,12 +38,13 @@ while player.alive() and enemy.alive():
 
     returned_action = input("Do you want to 1.attack, 2.defend, or 3.heal? ")
     if returned_action in ["1", "2", "3"]:
+        player.end_defend()  # End defend state at the start of the next turn
         action = returned_action
 
-    if enemy.health == 0:
-        print(f"player wins!!\n")
-        player.gain_xp(50)
-    else:
-        print("enemy wins!!")
+if enemy.health == 0:
+    print(f"player wins!!\n")
+    player.gain_xp(50)
+else:
+    print("enemy wins!!")
 
 player.save()

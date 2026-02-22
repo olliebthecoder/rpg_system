@@ -65,6 +65,34 @@ def finish_battle(player, enemy) -> None:
         print("enemy wins!!")
 
 
+def shop(player) -> None:
+    print(f"Welcome to the shop! You have {player.gold} gold.")
+    print("1) Health Potion (10 gold) - Heals 25% of your max health")
+    print("2) Defense Potion (15 gold) - Increases defense by 10 for one turn")
+    print("3) Exit Shop")
+
+    buy = input("> ")
+    while buy != "3":
+        if buy == "1":
+            if player.gold >= 10:
+                player.gold -= 10
+                player.heal()
+            else:
+                print("Not enough gold!")
+        elif buy == "2":
+            if player.gold >= 15:
+                player.gold -= 15
+                player.defend()
+            else:
+                print("Not enough gold!")
+        elif buy == "3":
+            print("Thanks for visiting the shop!")
+            break
+        else:
+            print("Invalid choice!")
+        buy = input("> ")
+
+
 def main() -> None:
     player = choose_character()
     player.load()
@@ -73,6 +101,7 @@ def main() -> None:
 
     run_battle(player, enemy)
     finish_battle(player, enemy)
+    shop(player)
     player.save()
 
 

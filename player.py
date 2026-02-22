@@ -13,12 +13,12 @@ def create_ninja():
 
 
 def create_orc():
-    # 150HP
+    # 155HP
     # 20 attack power
-    # 15 speed
-    # 20 attack speed
-    # 30% defense
-    # 30% crit chance
+    # 25 speed
+    # 30 attack speed
+    # 45% defense
+    # 20% crit chance
 
     return Character("orc", 155, 20, 25, 30, 45, 20)
 

@@ -127,14 +127,6 @@ class Character:
         self.is_defending = False
         print(f"{self.name} stopped defending. Defense back to {self.defense}.")
 
-    def use_item(self, item):
-        if item == "health_potion":
-            self.heal()
-        elif item == "defense_potion":
-            self.defend()
-        else:
-            print("Unknown item!")
-
     def attack(self, other):
 
         if not self.alive() or not other.alive():

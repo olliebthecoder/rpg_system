@@ -23,9 +23,10 @@ else:
     first = random.choice([player, enemy])
     second = player if first == enemy else enemy
 
-action = input("Do you want to 1.attack, 2.defend, or 3.heal? ")
 
 while player.alive() and enemy.alive():
+    action = input("Do you want to 1.attack, 2.defend, or 3.heal? ")
+
     if action == "1":
         player.attack(second)
     elif action == "2":
@@ -35,11 +36,6 @@ while player.alive() and enemy.alive():
 
     if enemy.alive():
         enemy.attack(player)
-
-    returned_action = input("Do you want to 1.attack, 2.defend, or 3.heal? ")
-    if returned_action in ["1", "2", "3"]:
-        player.end_defend()  # End defend state at the start of the next turn
-        action = returned_action
 
 if enemy.health == 0:
     print(f"player wins!!\n")

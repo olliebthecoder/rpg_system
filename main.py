@@ -21,8 +21,6 @@ def resolve_player_action(player, target, action: str) -> None:
     elif action == "2":
         player.defend()
     elif action == "3":
-        player.heal()
-    elif action == "4":
         player.show_inventory()
         choice = input("Enter item name to use: ")
         if choice:

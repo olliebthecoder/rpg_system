@@ -58,9 +58,20 @@ def run_battle(player, enemy) -> None:
 
 def finish_battle(player, enemy) -> None:
     if enemy.health == 0:
+        # Detect bosses by name (enemy names for bosses include 'BOSS')
+        is_boss = "BOSS" in enemy.name.upper()
+
+        if is_boss:
+            xp_reward = 200
+            gold_reward = 100
+            print("🔥 Boss defeated! Massive rewards! 🔥")
+        else:
+            xp_reward = 50
+            gold_reward = 20
+
         print("player wins!!\n")
-        player.gain_xp(50)
-        player.gain_gold(20)
+        player.gain_xp(xp_reward)
+        player.gain_gold(gold_reward)
     else:
         print("enemy wins!!")
 
@@ -98,12 +109,14 @@ def main() -> None:
     player.load()
     enemy = generate_enemy(player)
     player.reset_health()
-
-    run_battle(player, enemy)
-    finish_battle(player, enemy)
-    shop(player)
-    player.save()
+    while player.alive():
+        enemy = generate_enemy(player)
+        run_battle(player, enemy)
+        finish_battle(player, enemy)
+        shop(player)
+        player.save()
 
 
 if __name__ == "__main__":
     main()
+1

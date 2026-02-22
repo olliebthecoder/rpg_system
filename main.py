@@ -7,9 +7,7 @@ from player import choose_character
 def get_valid_action() -> str:
     """Prompt until the player enters a valid action."""
     while True:
-        action = input(
-            "Do you want to 1.attack, 2.defend, 3.heal, or 4.use item? "
-        ).strip()
+        action = input("Do you want to 1.attack, 2.defend, or 3.use item? \n").strip()
         if action in {"1", "2", "3", "4"}:
             return action
         print("Invalid action. Enter 1, 2, or 3.")

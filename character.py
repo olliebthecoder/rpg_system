@@ -1,5 +1,6 @@
 import random
 import json
+from item_Database import ITEM_DATABASE
 
 
 class Character:
@@ -139,23 +140,29 @@ class Character:
 
     def use_item(self, item_name: str) -> None:
         key = item_name.title()
+
         if self.inventory.get(key, 0) <= 0:
             print(f"No {key} in inventory.")
             return
 
-        # Health Potion: heals 25% max HP
-        if key == "Health Potion":
-            self.remove_item(key, 1)
-            self.heal()
+        item_data = ITEM_DATABASE.get(key)
+        if not item_data:
+            print(f"{key} does nothing.")
             return
 
-        # Defense Potion: apply defend for one turn
-        if key == "Defense Potion":
+        if item_data["type"] == "consumable":
             self.remove_item(key, 1)
-            self.defend()
-            return
 
-        print(f"{key} can't be used right now.")
+            if item_data["effect"] == "heal":
+                heal_amount = int(self.max_health * item_data["value"])
+                self.health = min(self.max_health, self.health + heal_amount)
+                print(f"{self.name} healed for {heal_amount} HP!")
+
+            elif item_data["effect"] == "defend":
+                self.defend()
+
+        else:
+            print(f"{key} can't be used right now.")
 
     def show_inventory(self) -> None:
         if not self.inventory:

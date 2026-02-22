@@ -1,6 +1,10 @@
 import random
 import json
+import os
 from item_Database import ITEM_DATABASE
+
+# Directory where character save files are stored
+SAVE_DIR = "player files"
 
 
 class Character:
@@ -24,6 +28,8 @@ class Character:
         self.crit_chance = crit_chance
 
         self.is_defending = False
+        # temporary defense buff applied by defend or items; removed by end_defend()
+        self.temp_defense_buff = 0
 
         # Leveling stats
         self.level = 1
@@ -50,10 +56,12 @@ class Character:
             "inventory": self.inventory,
         }
 
-        with open(f"{self.name}_save.json", "w") as file:
+        os.makedirs(SAVE_DIR, exist_ok=True)
+        path = os.path.join(SAVE_DIR, f"{self.name}_save.json")
+        with open(path, "w") as file:
             json.dump(data, file)
 
-        print(f"💾 {self.name} has been saved!")
+        print(f"💾 {self.name} has been saved to {path}!")
 
     def level_up(self):
         self.xp -= self.xp_to_next
@@ -94,7 +102,12 @@ class Character:
 
     def load(self):
         try:
-            with open(f"{self.name}_save.json", "r") as file:
+            # prefer save inside SAVE_DIR, fall back to current directory
+            path = os.path.join(SAVE_DIR, f"{self.name}_save.json")
+            if not os.path.exists(path):
+                path = f"{self.name}_save.json"
+
+            with open(path, "r") as file:
                 data = json.load(file)
 
             self.level = data.get("level", self.level)
@@ -139,30 +152,46 @@ class Character:
         return True
 
     def use_item(self, item_name: str) -> None:
-        key = item_name.title()
+        name = item_name.strip()
+        inventory_key = name.title()
 
-        if self.inventory.get(key, 0) <= 0:
-            print(f"No {key} in inventory.")
+        if self.inventory.get(inventory_key, 0) <= 0:
+            print(f"No {inventory_key} in inventory.")
             return
 
-        item_data = ITEM_DATABASE.get(key)
+        # Try tolerant lookups in ITEM_DATABASE: Title Case, lowercase, underscore form
+        candidates = [inventory_key, name, name.lower(), name.lower().replace(" ", "_")]
+        item_data = None
+        for cand in candidates:
+            if cand in ITEM_DATABASE:
+                item_data = ITEM_DATABASE[cand]
+                break
+
         if not item_data:
-            print(f"{key} does nothing.")
+            print(f"{inventory_key} does nothing.")
             return
 
-        if item_data["type"] == "consumable":
-            self.remove_item(key, 1)
+        if item_data.get("type") == "consumable":
+            # remove from inventory (use inventory_key since inventory uses Title Case)
+            self.remove_item(inventory_key, 1)
 
-            if item_data["effect"] == "heal":
-                heal_amount = int(self.max_health * item_data["value"])
+            effect = item_data.get("effect")
+            if effect == "heal":
+                heal_amount = int(self.max_health * item_data.get("value", 0))
                 self.health = min(self.max_health, self.health + heal_amount)
                 print(f"{self.name} healed for {heal_amount} HP!")
 
-            elif item_data["effect"] == "defend":
-                self.defend()
-
-        else:
-            print(f"{key} can't be used right now.")
+            elif effect == "defend":
+                defense_buff = item_data.get("value", 0)
+                # apply temporary defense buff tracked separately so end_defend() removes correctly
+                self.temp_defense_buff += defense_buff
+                self.defense += defense_buff
+                self.is_defending = True
+                print(
+                    f"{self.name}'s defense increased by {defense_buff} for this turn."
+                )
+            else:
+                print(f"{inventory_key} can't be used right now.")
 
     def show_inventory(self) -> None:
         if not self.inventory:
@@ -177,7 +206,9 @@ class Character:
             print(f"{self.name} is already defending.")
             return
 
-        self.defense += 10
+        buff = 10
+        self.temp_defense_buff = buff
+        self.defense += buff
         self.is_defending = True
         print(
             f"{self.name} is defending! Defense increased to {self.defense} for this turn."
@@ -187,7 +218,9 @@ class Character:
         if not self.is_defending:
             return
 
-        self.defense -= 10
+        # remove whatever temporary defense buff was applied
+        self.defense -= self.temp_defense_buff
+        self.temp_defense_buff = 0
         self.is_defending = False
         print(f"{self.name} stopped defending. Defense back to {self.defense}.")
 

@@ -83,11 +83,13 @@ def shop(player) -> None:
     print(f"Welcome to the shop! You have {player.gold} gold.")
     print("1) Health Potion (10 gold) - heals 25% when used")
     print("2) Defense Potion (15 gold) - +defend when used")
-    print("3) View Inventory")
-    print("4) Exit Shop")
+    print("3) Super Healing Potion (25 gold) - heals 50% when used")
+    print("4) Super Defense Potion (25 gold) - +defend when used")
+    print("5) View Inventory")
+    print("6) Exit Shop")
 
     buy = input("> ")
-    while buy != "4":
+    while buy != "6":
         if buy == "1":
             if player.gold >= 10:
                 player.gold -= 10
@@ -101,8 +103,20 @@ def shop(player) -> None:
             else:
                 print("Not enough gold!")
         elif buy == "3":
-            player.show_inventory()
+            if player.gold >= 25:
+                player.gold -= 25
+                player.add_item("Super Healing Potion", 1)
+            else:
+                print("Not enough gold!")
         elif buy == "4":
+            if player.gold >= 25:
+                player.gold -= 25
+                player.add_item("Super Defense Potion", 1)
+            else:
+                print("Not enough gold!")
+        elif buy == "5":
+            player.show_inventory()
+        elif buy == "6":
             print("Thanks for visiting the shop!")
             break
         else:

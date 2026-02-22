@@ -94,24 +94,32 @@ def shop(player) -> None:
             if player.gold >= 10:
                 player.gold -= 10
                 player.add_item("Health Potion", 1)
+                print(f" Bought Health Potion! You have {player.gold} gold left.")
             else:
                 print("Not enough gold!")
         elif buy == "2":
             if player.gold >= 15:
                 player.gold -= 15
                 player.add_item("Defense Potion", 1)
+                print(f" Bought Defense Potion! You have {player.gold} gold left.")
             else:
                 print("Not enough gold!")
         elif buy == "3":
             if player.gold >= 25:
                 player.gold -= 25
                 player.add_item("Super Healing Potion", 1)
+                print(
+                    f" Bought Super Healing Potion! You have {player.gold} gold left."
+                )
             else:
                 print("Not enough gold!")
         elif buy == "4":
             if player.gold >= 25:
                 player.gold -= 25
                 player.add_item("Super Defense Potion", 1)
+                print(
+                    f" Bought Super Defense Potion! You have {player.gold} gold left."
+                )
             else:
                 print("Not enough gold!")
         elif buy == "5":
@@ -133,6 +141,7 @@ def main() -> None:
         enemy = generate_enemy(player)
         run_battle(player, enemy)
         finish_battle(player, enemy)
+        player.reset_health()
         shop(player)
         player.save()
 

@@ -27,14 +27,22 @@ def resolve_player_action(player, target, action: str) -> None:
         if choice:
             player.use_item(choice)
     elif action == "4":
-        player.show_inventory()
-        choice = input("Enter item name to equip (or type 'unequip weapon/armor'): ")
-        if choice.lower().startswith("unequip"):
-            parts = choice.split()
-            slot = parts[1] if len(parts) > 1 else "weapon"
-            player.unequip_item(slot)
-        elif choice:
-            player.equip_item(choice)
+        while True:
+            player.show_inventory()
+            choice = input(
+                "Enter item name to equip (or type 'unequip weapon/armor', or 'done'): "
+            )
+            if choice.lower() == "done":
+                break
+            if choice.lower().startswith("unequip"):
+                parts = choice.split()
+                slot = parts[1] if len(parts) > 1 else "weapon"
+                player.unequip_item(slot)
+            elif choice:
+                player.equip_item(choice)
+        # After equipping, prompt for another action
+        action2 = get_valid_action()
+        resolve_player_action(player, target, action2)
     elif action == "5":
         player.save()
         print("Game saved. Exiting...")
@@ -112,6 +120,7 @@ def finish_battle(player, enemy) -> None:
         if dropped_items:
             print("Loot dropped:")
             for item in dropped_items:
+                player.add_item(item, 1)
                 # Show colored name and rarity initial if in ITEM_DATABASE
                 if item in ITEM_DATABASE:
                     name_display = ITEM_DATABASE[item].colored_name()

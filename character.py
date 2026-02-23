@@ -340,19 +340,20 @@ class Character:
         for eff in self.status_effects:
             etype = eff.get("type")
             dmg = eff.get("damage", 0)
+            turns_left = eff.get("duration", 1)
             if etype == "burn":
                 self.health -= dmg
                 if self.health < 0:
                     self.health = 0
                 print(
-                    f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left)"
+                    f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left) [{turns_left} turns left]"
                 )
             elif etype == "poison":
                 self.health -= dmg
                 if self.health < 0:
                     self.health = 0
                 print(
-                    f"☠️ {self.name} takes {dmg} poison damage! ({self.health} HP left)"
+                    f"☠️ {self.name} takes {dmg} poison damage! ({self.health} HP left) [{turns_left} turns left]"
                 )
 
             elif etype == "freeze":
@@ -360,14 +361,19 @@ class Character:
                 if self.health < 0:
                     self.health = 0
                 print(
-                    f"❄️ {self.name} takes {dmg} freeze damage! ({self.health} HP left)"
+                    f"❄️ {self.name} takes {dmg} freeze damage! ({self.health} HP left) [{turns_left} turns left]"
                 )
-                # Mark turn as skipped due to freeze
-                self.turn_skipped = True
+                # Apply slow effect
+                self.speed = max(0, self.speed - 10)
+                self.attack_speed = max(0, self.attack_speed - 10)
+                # 50% chance to skip turn
+                if random.random() < 0.5:
+                    self.turn_skipped = True
+                    print(f"{self.name} is slowed by freeze and may lose their turn!")
 
             # decrement duration
-            eff["duration"] = eff.get("duration", 1) - 1
-            if eff.get("duration", 0) > 0:
+            eff["duration"] = turns_left - 1
+            if eff["duration"] > 0:
                 remaining.append(eff)
 
         self.status_effects = remaining
@@ -421,51 +427,63 @@ class Character:
                     if random.randint(1, 100) <= chance:
                         burn = special.get("damage", 0)
                         duration = special.get("duration", 3)
-                        other.status_effects.append(
-                            {
-                                "type": "burn",
-                                "damage": burn,
-                                "duration": duration,
-                                "source": self.name,
-                            }
-                        )
-                        print(
-                            f"🔥 {other.name} was burned and will take {burn} damage for {duration} turns!"
-                        )
+                        # Prevent duplicate burn
+                        if not any(
+                            eff.get("type") == "burn" for eff in other.status_effects
+                        ):
+                            other.status_effects.append(
+                                {
+                                    "type": "burn",
+                                    "damage": burn,
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"🔥 {other.name} was burned and will take {burn} damage for {duration} turns!"
+                            )
 
                 if special and special.get("type") == "poison":
                     chance = special.get("chance", 0)
                     if random.randint(1, 100) <= chance:
                         poison = special.get("damage", 0)
                         duration = special.get("duration", 3)
-                        other.status_effects.append(
-                            {
-                                "type": "poison",
-                                "damage": poison,
-                                "duration": duration,
-                                "source": self.name,
-                            }
-                        )
-                        print(
-                            f"☠️ {other.name} was poisoned and will take {poison} damage for {duration} turns!"
-                        )
+                        # Prevent duplicate poison
+                        if not any(
+                            eff.get("type") == "poison" for eff in other.status_effects
+                        ):
+                            other.status_effects.append(
+                                {
+                                    "type": "poison",
+                                    "damage": poison,
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"☠️ {other.name} was poisoned and will take {poison} damage for {duration} turns!"
+                            )
 
                 if special and special.get("type") == "freeze":
                     chance = special.get("chance", 0)
                     if random.randint(1, 100) <= chance:
                         freeze = special.get("damage", 0)
                         duration = special.get("duration", 3)
-                        other.status_effects.append(
-                            {
-                                "type": "freeze",
-                                "damage": freeze,
-                                "duration": duration,
-                                "source": self.name,
-                            }
-                        )
-                        print(
-                            f"❄️ {other.name} was frozen and will take {freeze} damage for {duration} turns!"
-                        )
+                        # Prevent duplicate freeze
+                        if not any(
+                            eff.get("type") == "freeze" for eff in other.status_effects
+                        ):
+                            other.status_effects.append(
+                                {
+                                    "type": "freeze",
+                                    "damage": freeze,
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"❄️ {other.name} was frozen and will take {freeze} damage for {duration} turns!"
+                            )
 
         except Exception:
             pass

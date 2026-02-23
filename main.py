@@ -57,10 +57,16 @@ def run_battle(player, enemy) -> None:
 
         # First actor's turn
         if first == player:
+            player.process_status_effects()
+            if not player.alive():
+                break
             player.end_defend()
             action = get_valid_action()
             resolve_player_action(player, enemy, action)
         else:
+            enemy.process_status_effects()
+            if not enemy.alive():
+                break
             enemy.attack(player)
 
         if not player.alive() or not enemy.alive():
@@ -68,10 +74,16 @@ def run_battle(player, enemy) -> None:
 
         # Second actor's turn
         if second == player:
+            player.process_status_effects()
+            if not player.alive():
+                break
             player.end_defend()
             action = get_valid_action()
             resolve_player_action(player, enemy, action)
         else:
+            enemy.process_status_effects()
+            if not enemy.alive():
+                break
             enemy.attack(player)
 
 

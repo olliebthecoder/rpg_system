@@ -30,6 +30,8 @@ class Character:
         self.is_defending = False
         # temporary defense buff applied by defend or items; removed by end_defend()
         self.temp_defense_buff = 0
+        # status effects like burn/poison: list of dicts {type, damage, duration, source}
+        self.status_effects = []
 
         # Leveling stats
         self.level = 1
@@ -311,6 +313,30 @@ class Character:
         self.is_defending = False
         print(f"{self.name} stopped defending. Defense back to {self.defense}.")
 
+    def process_status_effects(self):
+        """Apply and tick down status effects like burn at the start of the character's turn."""
+        if not self.status_effects:
+            return
+
+        remaining = []
+        for eff in self.status_effects:
+            etype = eff.get("type")
+            if etype == "burn":
+                dmg = eff.get("damage", 0)
+                self.health -= dmg
+                if self.health < 0:
+                    self.health = 0
+                print(
+                    f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left)"
+                )
+
+            # decrement duration
+            eff["duration"] = eff.get("duration", 1) - 1
+            if eff.get("duration", 0) > 0:
+                remaining.append(eff)
+
+        self.status_effects = remaining
+
     def attack(self, other):
 
         if not self.alive() or not other.alive():
@@ -349,6 +375,30 @@ class Character:
         other.health -= final_damage
         if other.health < 0:
             other.health = 0
+
+        # Special weapon effects (e.g., burn) -> apply as DOT status effect
+        try:
+            if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
+                weapon = ITEM_DATABASE[self.equipped_weapon]
+                special = getattr(weapon, "special", None)
+                if special and special.get("type") == "burn":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        burn = special.get("damage", 0)
+                        duration = special.get("duration", 3)
+                        other.status_effects.append(
+                            {
+                                "type": "burn",
+                                "damage": burn,
+                                "duration": duration,
+                                "source": self.name,
+                            }
+                        )
+                        print(
+                            f"🔥 {other.name} was burned and will take {burn} damage for {duration} turns!"
+                        )
+        except Exception:
+            pass
 
         print(f"{self.name} hit {other.name} for {final_damage} damage!")
         print(f"{other.name} has {other.health} HP left.\n")

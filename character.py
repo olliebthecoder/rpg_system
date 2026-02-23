@@ -339,14 +339,17 @@ class Character:
         remaining = []
         for eff in self.status_effects:
             etype = eff.get("type")
+            dmg = eff.get("damage", 0)
             if etype == "burn":
-                dmg = eff.get("damage", 0)
                 self.health -= dmg
                 if self.health < 0:
                     self.health = 0
-                print(
-                    f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left)"
-                )
+                print(f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left)")
+            elif etype == "poison":
+                self.health -= dmg
+                if self.health < 0:
+                    self.health = 0
+                print(f"☠️ {self.name} takes {dmg} poison damage! ({self.health} HP left)")
 
             # decrement duration
             eff["duration"] = eff.get("duration", 1) - 1
@@ -415,6 +418,24 @@ class Character:
                         print(
                             f"🔥 {other.name} was burned and will take {burn} damage for {duration} turns!"
                         )
+
+                if special and special.get("type") == "poison":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        poison = special.get("damage", 0)
+                        duration = special.get("duration", 3)
+                        other.status_effects.append(
+                            {
+                                "type": "poison",
+                                "damage": poison,
+                                "duration": duration,
+                                "source": self.name,
+                            }
+                        )
+                        print(
+                            f"☠️ {other.name} was poisoned and will take {poison} damage for {duration} turns!"
+                        )
+                        
         except Exception:
             pass
 

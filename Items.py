@@ -167,8 +167,9 @@ ITEM_DATABASE = {
         description="A sword imbued with flames. +15 attack. 20% chance to burn enemy.",
         special={
             "type": "burn",
-            "chance": 20,  # 20% chance
+            "chance": 100,  # 100% chance
             "damage": 5,  # burn damage
+            "duration": 3,  # burn duration in turns
         },
         rarity="Mythic",
     ),
@@ -177,8 +178,13 @@ ITEM_DATABASE = {
         item_type="weapon",
         bonuses={"attack": 8, "speed": 5},
         price=250,
-        description="A lightweight dagger. +8 attack, +5 speed. 15% bonus crit chance.",
-        special={"type": "crit_bonus", "value": 15},  # +15% crit chance
+        description="A lightweight dagger. +8 attack, +5 speed. poison.",
+        special={
+            "type": "poison",
+            "chance": 100,
+            "damage": 3,
+            "duration": 5,  # poison duration in turns
+        },
         rarity="Rare",
     ),
     # ---- ARMOR ----

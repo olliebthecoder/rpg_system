@@ -1,1 +1,1 @@
-{"name": "orc", "level": 1, "xp": 50, "xp_to_next": 100, "max_health": 155, "health": 131, "attack_power": 20, "speed": 25, "attack_speed": 30, "defense": 45, "gold": 10, "inventory": {"Health Potion": 1, "Iron Sword": 1}, "equipped_weapon": null, "equipped_armor": null}
+{"name": "orc", "level": 2, "xp": 50, "xp_to_next": 150, "max_health": 175, "health": 79, "attack_power": 40, "speed": 28, "attack_speed": 33, "defense": 46, "gold": 50, "inventory": {"Iron Sword": 1, "Super Healing Potion": 1}, "equipped_weapon": "Iron Sword", "equipped_armor": null}

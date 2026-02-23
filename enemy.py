@@ -60,7 +60,7 @@ def generate_enemy(player):
     is_boss = False
     if level % 5 == 0:
         name = f"🔥 BOSS {archetype_name}"
-        health = int(health * 1.3)
+        health = int(health * 1.5)
         attack = int(attack * 1.5)
         is_boss = True
 

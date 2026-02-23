@@ -112,7 +112,13 @@ def finish_battle(player, enemy) -> None:
         if dropped_items:
             print("Loot dropped:")
             for item in dropped_items:
-                print(f"- {item}")
+                # Show colored name and rarity initial if in ITEM_DATABASE
+                if item in ITEM_DATABASE:
+                    name_display = ITEM_DATABASE[item].colored_name()
+                    initial = f" ({ITEM_DATABASE[item].rarity[0]})"
+                    print(f"- {name_display}{initial}")
+                else:
+                    print(f"- {item}")
         else:
             print("No loot dropped.")
     else:

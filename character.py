@@ -218,16 +218,21 @@ class Character:
             name_display = (
                 ITEM_DATABASE[item].colored_name() if item in ITEM_DATABASE else item
             )
-            print(f"- {name_display}: {qty}")
+            initial = (
+                f" ({ITEM_DATABASE[item].rarity[0]})" if item in ITEM_DATABASE else ""
+            )
+            print(f"- {name_display}{initial}: {qty}")
         print()
         print("Equipped Items:")
         weapon_display = (
             ITEM_DATABASE[self.equipped_weapon].colored_name()
+            + f" ({ITEM_DATABASE[self.equipped_weapon].rarity[0]})"
             if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE
             else (self.equipped_weapon if self.equipped_weapon else "None")
         )
         armor_display = (
             ITEM_DATABASE[self.equipped_armor].colored_name()
+            + f" ({ITEM_DATABASE[self.equipped_armor].rarity[0]})"
             if self.equipped_armor and self.equipped_armor in ITEM_DATABASE
             else (self.equipped_armor if self.equipped_armor else "None")
         )

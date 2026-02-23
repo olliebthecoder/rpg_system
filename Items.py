@@ -34,6 +34,17 @@ class Item:
         color = colors.get(self.rarity, "\033[37m")
         return f"{color}{self.name}{reset}"
 
+    def rarity_initial(self):
+        mapping = {
+            "Common": "C",
+            "Uncommon": "U",
+            "Rare": "R",
+            "Epic": "E",
+            "Legendary": "L",
+            "Mythic": "M",
+        }
+        return mapping.get(self.rarity, (self.rarity[0] if self.rarity else "?"))
+
     def apply_effect(self, target):
         if self.effect == "heal":
             heal_amount = int(target.max_health * self.value)

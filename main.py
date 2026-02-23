@@ -111,6 +111,11 @@ def shop(player) -> None:
     while True:
         print(f"\nWelcome to the shop! You have {player.gold} gold.\n")
 
+        # Rarity legend
+        print(
+            "Rarity legend: (C) Common  (U) Uncommon  (R) Rare  (E) Epic  (L) Legendary  (M) Mythic\n"
+        )
+
         items = list(ITEM_DATABASE.keys())
 
         # Display items dynamically
@@ -120,7 +125,10 @@ def shop(player) -> None:
             name_display = (
                 ITEM_DATABASE[item].colored_name() if item in ITEM_DATABASE else item
             )
-            print(f"{i}) {name_display} ({price} gold) - {desc}")
+            initial = (
+                f" ({ITEM_DATABASE[item].rarity[0]})" if item in ITEM_DATABASE else ""
+            )
+            print(f"{i}) {name_display}{initial} ({price} gold) - {desc}")
 
         print(f"{len(items)+1}) View Inventory")
         print(f"{len(items)+2}) Exit Shop")
@@ -152,7 +160,14 @@ def shop(player) -> None:
                         if item_name in ITEM_DATABASE
                         else item_name
                     )
-                    print(f"Bought {bought_name}! You have {player.gold} gold left.")
+                    bought_initial = (
+                        f" ({ITEM_DATABASE[item_name].rarity[0]})"
+                        if item_name in ITEM_DATABASE
+                        else ""
+                    )
+                    print(
+                        f"Bought {bought_name}{bought_initial}! You have {player.gold} gold left."
+                    )
                 else:
                     print("Not enough gold!")
             else:

@@ -117,7 +117,10 @@ def shop(player) -> None:
         for i, item in enumerate(items, start=1):
             price = ITEM_DATABASE[item].price
             desc = ITEM_DATABASE[item].description
-            print(f"{i}) {item} ({price} gold) - {desc}")
+            name_display = (
+                ITEM_DATABASE[item].colored_name() if item in ITEM_DATABASE else item
+            )
+            print(f"{i}) {name_display} ({price} gold) - {desc}")
 
         print(f"{len(items)+1}) View Inventory")
         print(f"{len(items)+2}) Exit Shop")
@@ -144,7 +147,12 @@ def shop(player) -> None:
                 if player.gold >= price:
                     player.gold -= price
                     player.add_item(item_name, 1)
-                    print(f"Bought {item_name}! You have {player.gold} gold left.")
+                    bought_name = (
+                        ITEM_DATABASE[item_name].colored_name()
+                        if item_name in ITEM_DATABASE
+                        else item_name
+                    )
+                    print(f"Bought {bought_name}! You have {player.gold} gold left.")
                 else:
                     print("Not enough gold!")
             else:

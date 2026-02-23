@@ -9,6 +9,7 @@ class Item:
         effect=None,
         value=0,
         special=None,
+        rarity="Common",
     ):
         self.name = name
         self.type = item_type
@@ -18,6 +19,20 @@ class Item:
         self.effect = effect  # For consumables
         self.value = value  # Amount healed or defense buff
         self.special = special  # For unique item effects
+        self.rarity = rarity
+
+    def colored_name(self):
+        reset = "\033[0m"
+        colors = {
+            "Common": "\033[37m",
+            "Uncommon": "\033[32m",
+            "Rare": "\033[34m",
+            "Epic": "\033[35m",
+            "Legendary": "\033[33m",
+            "Mythic": "\033[31m",
+        }
+        color = colors.get(self.rarity, "\033[37m")
+        return f"{color}{self.name}{reset}"
 
     def apply_effect(self, target):
         if self.effect == "heal":
@@ -52,6 +67,7 @@ ITEM_DATABASE = {
         value=0.25,
         price=10,
         description="Heals 25% of your max health.",
+        rarity="Common",
     ),
     "Defense Potion": Item(
         name="Defense Potion",
@@ -60,6 +76,7 @@ ITEM_DATABASE = {
         value=10,
         price=15,
         description="Increases your defense by 10 for one turn.",
+        rarity="Common",
     ),
     "Super Healing Potion": Item(
         name="Super Healing Potion",
@@ -68,6 +85,7 @@ ITEM_DATABASE = {
         value=0.5,
         price=25,
         description="Heals 50% of your max health.",
+        rarity="Rare",
     ),
     "Super Defense Potion": Item(
         name="Super Defense Potion",
@@ -76,6 +94,7 @@ ITEM_DATABASE = {
         value=20,
         price=30,
         description="Increases your defense by 20 for one turn.",
+        rarity="Rare",
     ),
     "Elixir of Speed": Item(
         name="Elixir of Speed",
@@ -84,6 +103,7 @@ ITEM_DATABASE = {
         value=5,
         price=40,
         description="Increases your speed by 5 for one turn.",
+        rarity="Uncommon",
     ),
     "Mega Healing Potion": Item(
         name="Mega Healing Potion",
@@ -92,6 +112,7 @@ ITEM_DATABASE = {
         value=0.75,
         price=75,
         description="Heals 75% of your max health.",
+        rarity="Epic",
     ),
     "Rejuvenation Potion": Item(
         name="Rejuvenation Potion",
@@ -100,6 +121,7 @@ ITEM_DATABASE = {
         value={"heal": 0.5, "defend": 10},
         price=50,
         description="Heals 50% HP and increases defense by 10 for one turn.",
+        rarity="Rare",
     ),
     # ---- WEAPONS ----
     "Iron Sword": Item(
@@ -108,6 +130,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 5},
         price=100,
         description="A sturdy iron sword. +5 attack.",
+        rarity="Common",
     ),
     "Steel Sword": Item(
         name="Steel Sword",
@@ -115,6 +138,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 10},
         price=200,
         description="A sharp steel blade. +10 attack.",
+        rarity="Uncommon",
     ),
     "Legendary Blade": Item(
         name="Legendary Blade",
@@ -122,6 +146,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 20},
         price=500,
         description="A legendary weapon of immense power. +20 attack.",
+        rarity="Legendary",
     ),
     "Flame Sword": Item(
         name="Flame Sword",
@@ -134,6 +159,7 @@ ITEM_DATABASE = {
             "chance": 20,  # 20% chance
             "damage": 5,  # burn damage
         },
+        rarity="Epic",
     ),
     "Shadow Dagger": Item(
         name="Shadow Dagger",
@@ -142,6 +168,7 @@ ITEM_DATABASE = {
         price=250,
         description="A lightweight dagger. +8 attack, +5 speed. 15% bonus crit chance.",
         special={"type": "crit_bonus", "value": 15},  # +15% crit chance
+        rarity="Rare",
     ),
     # ---- ARMOR ----
     "Iron Armor": Item(
@@ -150,6 +177,7 @@ ITEM_DATABASE = {
         bonuses={"defense": 8},
         price=150,
         description="Heavy iron plating for protection. +8 defense.",
+        rarity="Common",
     ),
     "Steel Armor": Item(
         name="Steel Armor",
@@ -157,6 +185,7 @@ ITEM_DATABASE = {
         bonuses={"defense": 15},
         price=300,
         description="Reinforced steel armor. +15 defense.",
+        rarity="Uncommon",
     ),
     "Dragon Scale Armor": Item(
         name="Dragon Scale Armor",
@@ -164,6 +193,7 @@ ITEM_DATABASE = {
         bonuses={"defense": 25},
         price=600,
         description="Armor forged from dragon scales. +25 defense.",
+        rarity="Legendary",
     ),
     "Mage Robes": Item(
         name="Mage Robes",
@@ -171,6 +201,7 @@ ITEM_DATABASE = {
         bonuses={"defense": 10, "speed": 5},
         price=200,
         description="Light robes that protect and allow agility. +10 defense, +5 speed.",
+        rarity="Rare",
     ),
     "Titan Armor": Item(
         name="Titan Armor",
@@ -178,5 +209,6 @@ ITEM_DATABASE = {
         bonuses={"defense": 40, "speed": -5},
         price=800,
         description="Extremely heavy armor, unmatched protection. +40 defense, -5 speed.",
+        rarity="Mythic",
     ),
 }

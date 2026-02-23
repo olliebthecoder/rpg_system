@@ -68,14 +68,23 @@ def run_battle(player, enemy) -> None:
             player.process_status_effects()
             if not player.alive():
                 break
-            player.end_defend()
-            action = get_valid_action()
-            resolve_player_action(player, enemy, action)
+            # Check freeze turn skip
+            if getattr(player, "turn_skipped", False):
+                print(f"{player.name} is frozen and loses their turn!")
+                player.turn_skipped = False
+            else:
+                player.end_defend()
+                action = get_valid_action()
+                resolve_player_action(player, enemy, action)
         else:
             enemy.process_status_effects()
             if not enemy.alive():
                 break
-            enemy.attack(player)
+            if getattr(enemy, "turn_skipped", False):
+                print(f"{enemy.name} is frozen and loses their turn!")
+                enemy.turn_skipped = False
+            else:
+                enemy.attack(player)
 
         if not player.alive() or not enemy.alive():
             break
@@ -85,14 +94,22 @@ def run_battle(player, enemy) -> None:
             player.process_status_effects()
             if not player.alive():
                 break
-            player.end_defend()
-            action = get_valid_action()
-            resolve_player_action(player, enemy, action)
+            if getattr(player, "turn_skipped", False):
+                print(f"{player.name} is frozen and loses their turn!")
+                player.turn_skipped = False
+            else:
+                player.end_defend()
+                action = get_valid_action()
+                resolve_player_action(player, enemy, action)
         else:
             enemy.process_status_effects()
             if not enemy.alive():
                 break
-            enemy.attack(player)
+            if getattr(enemy, "turn_skipped", False):
+                print(f"{enemy.name} is frozen and loses their turn!")
+                enemy.turn_skipped = False
+            else:
+                enemy.attack(player)
 
 
 def finish_battle(player, enemy) -> None:

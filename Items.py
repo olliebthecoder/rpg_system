@@ -177,7 +177,7 @@ ITEM_DATABASE = {
         name="Shadow Dagger",
         item_type="weapon",
         bonuses={"attack": 8, "speed": 5},
-        price=250,
+        price=650,
         description="A lightweight dagger. +8 attack, +5 speed. poison.",
         special={
             "type": "poison",
@@ -185,7 +185,21 @@ ITEM_DATABASE = {
             "damage": 3,
             "duration": 5,  # poison duration in turns
         },
-        rarity="Rare",
+        rarity="Mythic",
+    ),
+    "Ice Scythe": Item(
+        name="Ice Scythe",
+        item_type="weapon",
+        bonuses={"attack": 12},
+        price=800,
+        description="A scythe imbued with ice. +12 attack, slows down opponent .",
+        special={
+            "type": "freeze",
+            "chance": 100,
+            "damage": 4,
+            "duration": 2,  # freeze duration in turns
+        },
+        rarity="Mythic",
     ),
     # ---- ARMOR ----
     "Iron Armor": Item(

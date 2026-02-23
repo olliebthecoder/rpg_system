@@ -344,12 +344,26 @@ class Character:
                 self.health -= dmg
                 if self.health < 0:
                     self.health = 0
-                print(f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left)")
+                print(
+                    f"🔥 {self.name} takes {dmg} burn damage! ({self.health} HP left)"
+                )
             elif etype == "poison":
                 self.health -= dmg
                 if self.health < 0:
                     self.health = 0
-                print(f"☠️ {self.name} takes {dmg} poison damage! ({self.health} HP left)")
+                print(
+                    f"☠️ {self.name} takes {dmg} poison damage! ({self.health} HP left)"
+                )
+
+            elif etype == "freeze":
+                self.health -= dmg
+                if self.health < 0:
+                    self.health = 0
+                print(
+                    f"❄️ {self.name} takes {dmg} freeze damage! ({self.health} HP left)"
+                )
+                # Mark turn as skipped due to freeze
+                self.turn_skipped = True
 
             # decrement duration
             eff["duration"] = eff.get("duration", 1) - 1
@@ -435,7 +449,24 @@ class Character:
                         print(
                             f"☠️ {other.name} was poisoned and will take {poison} damage for {duration} turns!"
                         )
-                        
+
+                if special and special.get("type") == "freeze":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        freeze = special.get("damage", 0)
+                        duration = special.get("duration", 3)
+                        other.status_effects.append(
+                            {
+                                "type": "freeze",
+                                "damage": freeze,
+                                "duration": duration,
+                                "source": self.name,
+                            }
+                        )
+                        print(
+                            f"❄️ {other.name} was frozen and will take {freeze} damage for {duration} turns!"
+                        )
+
         except Exception:
             pass
 

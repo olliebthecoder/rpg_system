@@ -1,1 +1,1 @@
-{"name": "ninja", "level": 1, "xp": 0, "xp_to_next": 100, "max_health": 100, "health": 0, "attack_power": 15, "speed": 75, "attack_speed": 45, "defense": 15, "gold": 0, "inventory": {"Super Healing Potion": 4, "Super Defense Potion": 4}}
+{"name": "ninja", "level": 2, "xp": 0, "xp_to_next": 150, "max_health": 120, "health": 0, "attack_power": 20, "speed": 78, "attack_speed": 48, "defense": 36, "gold": 40, "inventory": {"Super Defense Potion": 2}, "equipped_weapon": null, "equipped_armor": null}

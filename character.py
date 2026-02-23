@@ -1,7 +1,7 @@
 import random
 import json
 import os
-from item_Database import ITEM_DATABASE
+from Items import ITEM_DATABASE
 
 # Directory where character save files are stored
 SAVE_DIR = "player files"
@@ -39,6 +39,12 @@ class Character:
         self.gold = 0
         # inventory: map item name -> quantity
         self.inventory = {}
+        # equipped items: weapon and armor
+        self.equipped_weapon = None
+        self.equipped_armor = None
+        # base stat bonuses from equipped items
+        self.equipped_attack_bonus = 0
+        self.equipped_defense_bonus = 0
 
     def save(self):
         data = {
@@ -54,6 +60,8 @@ class Character:
             "defense": self.defense,
             "gold": self.gold,
             "inventory": self.inventory,
+            "equipped_weapon": self.equipped_weapon,
+            "equipped_armor": self.equipped_armor,
         }
 
         os.makedirs(SAVE_DIR, exist_ok=True)
@@ -121,7 +129,12 @@ class Character:
             self.defense = data.get("defense", self.defense)
             self.gold = data.get("gold", self.gold)
             self.inventory = data.get("inventory", self.inventory)
+            self.equipped_weapon = data.get("equipped_weapon", self.equipped_weapon)
+            self.equipped_armor = data.get("equipped_armor", self.equipped_armor)
             self.crit_chance = data.get("crit_chance", self.crit_chance)
+
+            # reapply equipment bonuses when loading
+            self._recalc_equipped_bonuses()
 
             print(f"📂 {self.name} has been loaded!")
 
@@ -171,18 +184,19 @@ class Character:
             print(f"{inventory_key} does nothing.")
             return
 
-        if item_data.get("type") == "consumable":
+        # item_data is now an Item object with .type, .effect, .value attributes
+        if item_data.type == "consumable":
             # remove from inventory (use inventory_key since inventory uses Title Case)
             self.remove_item(inventory_key, 1)
 
-            effect = item_data.get("effect")
+            effect = item_data.effect
             if effect == "heal":
-                heal_amount = int(self.max_health * item_data.get("value", 0))
+                heal_amount = int(self.max_health * item_data.value)
                 self.health = min(self.max_health, self.health + heal_amount)
                 print(f"{self.name} healed for {heal_amount} HP!")
 
             elif effect == "defend":
-                defense_buff = item_data.get("value", 0)
+                defense_buff = item_data.value
                 # apply temporary defense buff tracked separately so end_defend() removes correctly
                 self.temp_defense_buff += defense_buff
                 self.defense += defense_buff
@@ -200,6 +214,79 @@ class Character:
         print("Inventory:")
         for item, qty in self.inventory.items():
             print(f"- {item}: {qty}")
+        print()
+        print("Equipped Items:")
+        print(f"- Weapon: {self.equipped_weapon if self.equipped_weapon else 'None'}")
+        print(f"- Armor: {self.equipped_armor if self.equipped_armor else 'None'}")
+
+    def equip_item(self, item_name: str) -> None:
+        """Equip a weapon or armor from inventory."""
+        name = item_name.strip()
+        inventory_key = name.title()
+
+        if self.inventory.get(inventory_key, 0) <= 0:
+            print(f"No {inventory_key} in inventory.")
+            return
+
+        # Find the item in database
+        candidates = [inventory_key, name, name.lower(), name.lower().replace(" ", "_")]
+        item_data = None
+        for cand in candidates:
+            if cand in ITEM_DATABASE:
+                item_data = ITEM_DATABASE[cand]
+                inventory_key = cand  # Use the found key
+                break
+
+        if not item_data:
+            print(f"{name} not found in database.")
+            return
+
+        # Equip based on item type
+        if item_data.type == "weapon":
+            self.equipped_weapon = inventory_key
+            print(f"Equipped {inventory_key}!")
+            self._recalc_equipped_bonuses()
+        elif item_data.type == "armor":
+            self.equipped_armor = inventory_key
+            print(f"Equipped {inventory_key}!")
+            self._recalc_equipped_bonuses()
+        else:
+            print(f"{inventory_key} cannot be equipped.")
+
+    def unequip_item(self, slot: str) -> None:
+        """Unequip weapon or armor."""
+        slot = slot.lower().strip()
+        if slot in ["weapon", "w"]:
+            self.equipped_weapon = None
+            print("Unequipped weapon.")
+        elif slot in ["armor", "a"]:
+            self.equipped_armor = None
+            print("Unequipped armor.")
+        else:
+            print("Invalid slot. Use 'weapon' or 'armor'.")
+        self._recalc_equipped_bonuses()
+
+    def _recalc_equipped_bonuses(self) -> None:
+        """Recalculate and apply attack/defense bonuses from equipped items."""
+        # Reset bonuses
+        self.attack_power -= self.equipped_attack_bonus
+        self.defense -= self.equipped_defense_bonus
+        self.equipped_attack_bonus = 0
+        self.equipped_defense_bonus = 0
+
+        # Apply weapon bonuses
+        if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
+            weapon = ITEM_DATABASE[self.equipped_weapon]
+            if weapon.bonuses.get("attack"):
+                self.equipped_attack_bonus = weapon.bonuses["attack"]
+                self.attack_power += self.equipped_attack_bonus
+
+        # Apply armor bonuses
+        if self.equipped_armor and self.equipped_armor in ITEM_DATABASE:
+            armor = ITEM_DATABASE[self.equipped_armor]
+            if armor.bonuses.get("defense"):
+                self.equipped_defense_bonus = armor.bonuses["defense"]
+                self.defense += self.equipped_defense_bonus
 
     def defend(self):
         if self.is_defending:

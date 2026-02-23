@@ -2,18 +2,18 @@ import random
 
 from enemy import generate_enemy
 from player import choose_character
-from item_Database import ITEM_DATABASE
+from Items import ITEM_DATABASE
 
 
 def get_valid_action() -> str:
     """Prompt until the player enters a valid action."""
     while True:
         action = input(
-            "Do you want to 1.attack, 2.defend, 3.use item, or 4.save and quit? \n"
+            "Do you want to 1.attack, 2.defend, 3.use item, 4.equip, or 5.save and quit? \n"
         ).strip()
-        if action in {"1", "2", "3", "4"}:
+        if action in {"1", "2", "3", "4", "5"}:
             return action
-        print("Invalid action. Enter 1, 2, 3, or 4.")
+        print("Invalid action. Enter 1, 2, 3, 4, or 5.")
 
 
 def resolve_player_action(player, target, action: str) -> None:
@@ -24,12 +24,21 @@ def resolve_player_action(player, target, action: str) -> None:
     elif action == "3":
         player.show_inventory()
         choice = input("Enter item name to use: ")
+        if choice:
+            player.use_item(choice)
     elif action == "4":
+        player.show_inventory()
+        choice = input("Enter item name to equip (or type 'unequip weapon/armor'): ")
+        if choice.lower().startswith("unequip"):
+            parts = choice.split()
+            slot = parts[1] if len(parts) > 1 else "weapon"
+            player.unequip_item(slot)
+        elif choice:
+            player.equip_item(choice)
+    elif action == "5":
         player.save()
         print("Game saved. Exiting...")
         exit()
-        if choice:
-            player.use_item(choice)
 
 
 def choose_turn_order(player, enemy):
@@ -94,8 +103,8 @@ def shop(player) -> None:
 
         # Display items dynamically
         for i, item in enumerate(items, start=1):
-            price = ITEM_DATABASE[item]["price"]
-            desc = ITEM_DATABASE[item]["description"]
+            price = ITEM_DATABASE[item].price
+            desc = ITEM_DATABASE[item].description
             print(f"{i}) {item} ({price} gold) - {desc}")
 
         print(f"{len(items)+1}) View Inventory")
@@ -118,7 +127,7 @@ def shop(player) -> None:
             index = int(choice) - 1
             if 0 <= index < len(items):
                 item_name = items[index]
-                price = ITEM_DATABASE[item_name]["price"]
+                price = ITEM_DATABASE[item_name].price
 
                 if player.gold >= price:
                     player.gold -= price

@@ -163,14 +163,14 @@ ITEM_DATABASE = {
         name="Flame Sword",
         item_type="weapon",
         bonuses={"attack": 15},
-        price=400,
+        price=700,
         description="A sword imbued with flames. +15 attack. 20% chance to burn enemy.",
         special={
             "type": "burn",
             "chance": 20,  # 20% chance
             "damage": 5,  # burn damage
         },
-        rarity="Epic",
+        rarity="Mythic",
     ),
     "Shadow Dagger": Item(
         name="Shadow Dagger",

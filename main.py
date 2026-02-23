@@ -103,6 +103,18 @@ def finish_battle(player, enemy) -> None:
         print("player wins!!\n")
         player.gain_xp(xp_reward)
         player.gain_gold(gold_reward)
+
+        # Handle enemy drops
+        from loot.drops import roll_drops
+
+        drops = getattr(enemy, "drops", [])
+        dropped_items = roll_drops(drops)
+        if dropped_items:
+            print("Loot dropped:")
+            for item in dropped_items:
+                print(f"- {item}")
+        else:
+            print("No loot dropped.")
     else:
         print("enemy wins!!")
 

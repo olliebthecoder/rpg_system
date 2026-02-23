@@ -1,5 +1,7 @@
 import random
+
 from character import Character
+from loot.drops import get_enemy_drops
 
 
 enemy_archetypes = {
@@ -55,11 +57,15 @@ def generate_enemy(player):
     name = f"Level {level} {archetype_name}"
 
     # Boss every 5 levels
+    is_boss = False
     if level % 5 == 0:
         name = f"🔥 BOSS {archetype_name}"
         health = int(health * 1.3)
         attack = int(attack * 1.5)
+        is_boss = True
 
     enemy = Character(name, health, attack, speed, attack_speed, defense, crit_chance)
 
+    # Attach drops to enemy for use in finish_battle
+    enemy.drops = get_enemy_drops(archetype_name, is_boss)
     return enemy

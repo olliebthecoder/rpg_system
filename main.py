@@ -2,15 +2,18 @@ import random
 
 from enemy import generate_enemy
 from player import choose_character
+from item_Database import ITEM_DATABASE
 
 
 def get_valid_action() -> str:
     """Prompt until the player enters a valid action."""
     while True:
-        action = input("Do you want to 1.attack, 2.defend, or 3.use item? \n").strip()
+        action = input(
+            "Do you want to 1.attack, 2.defend, 3.use item, or 4.save and quit? \n"
+        ).strip()
         if action in {"1", "2", "3", "4"}:
             return action
-        print("Invalid action. Enter 1, 2, or 3.")
+        print("Invalid action. Enter 1, 2, 3, or 4.")
 
 
 def resolve_player_action(player, target, action: str) -> None:
@@ -21,6 +24,10 @@ def resolve_player_action(player, target, action: str) -> None:
     elif action == "3":
         player.show_inventory()
         choice = input("Enter item name to use: ")
+    elif action == "4":
+        player.save()
+        print("Game saved. Exiting...")
+        exit()
         if choice:
             player.use_item(choice)
 
@@ -80,56 +87,49 @@ def finish_battle(player, enemy) -> None:
 
 
 def shop(player) -> None:
-    print(f"Welcome to the shop! You have {player.gold} gold.")
-    print("1) Health Potion (10 gold) - heals 25% when used")
-    print("2) Defense Potion (15 gold) - +defend when used")
-    print("3) Super Healing Potion (25 gold) - heals 50% when used")
-    print("4) Super Defense Potion (25 gold) - +defend when used")
-    print("5) View Inventory")
-    print("6) Exit Shop")
+    while True:
+        print(f"\nWelcome to the shop! You have {player.gold} gold.\n")
 
-    buy = input("> ")
-    while buy != "6":
-        if buy == "1":
-            if player.gold >= 10:
-                player.gold -= 10
-                player.add_item("Health Potion", 1)
-                print(f" Bought Health Potion! You have {player.gold} gold left.")
-            else:
-                print("Not enough gold!")
-        elif buy == "2":
-            if player.gold >= 15:
-                player.gold -= 15
-                player.add_item("Defense Potion", 1)
-                print(f" Bought Defense Potion! You have {player.gold} gold left.")
-            else:
-                print("Not enough gold!")
-        elif buy == "3":
-            if player.gold >= 25:
-                player.gold -= 25
-                player.add_item("Super Healing Potion", 1)
-                print(
-                    f" Bought Super Healing Potion! You have {player.gold} gold left."
-                )
-            else:
-                print("Not enough gold!")
-        elif buy == "4":
-            if player.gold >= 25:
-                player.gold -= 25
-                player.add_item("Super Defense Potion", 1)
-                print(
-                    f" Bought Super Defense Potion! You have {player.gold} gold left."
-                )
-            else:
-                print("Not enough gold!")
-        elif buy == "5":
-            player.show_inventory()
-        elif buy == "6":
+        items = list(ITEM_DATABASE.keys())
+
+        # Display items dynamically
+        for i, item in enumerate(items, start=1):
+            price = ITEM_DATABASE[item]["price"]
+            desc = ITEM_DATABASE[item]["description"]
+            print(f"{i}) {item} ({price} gold) - {desc}")
+
+        print(f"{len(items)+1}) View Inventory")
+        print(f"{len(items)+2}) Exit Shop")
+
+        choice = input("> ")
+
+        # Exit
+        if choice == str(len(items) + 2):
             print("Thanks for visiting the shop!")
             break
+
+        # View Inventory
+        if choice == str(len(items) + 1):
+            player.show_inventory()
+            continue
+
+        # Buy Item
+        if choice.isdigit():
+            index = int(choice) - 1
+            if 0 <= index < len(items):
+                item_name = items[index]
+                price = ITEM_DATABASE[item_name]["price"]
+
+                if player.gold >= price:
+                    player.gold -= price
+                    player.add_item(item_name, 1)
+                    print(f"Bought {item_name}! You have {player.gold} gold left.")
+                else:
+                    print("Not enough gold!")
+            else:
+                print("Invalid choice!")
         else:
             print("Invalid choice!")
-        buy = input("> ")
 
 
 def main() -> None:
@@ -138,14 +138,13 @@ def main() -> None:
     enemy = generate_enemy(player)
     player.reset_health()
     while player.alive():
+        player.reset_health()
         enemy = generate_enemy(player)
         run_battle(player, enemy)
         finish_battle(player, enemy)
-        player.reset_health()
         shop(player)
         player.save()
 
 
 if __name__ == "__main__":
     main()
-1

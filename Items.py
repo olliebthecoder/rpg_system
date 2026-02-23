@@ -201,6 +201,20 @@ ITEM_DATABASE = {
         },
         rarity="Mythic",
     ),
+    "Lightning Hammer": Item(
+        name="Lightning Hammer",
+        item_type="weapon",
+        bonuses={"attack": 18, "speed": 5},
+        price=900,
+        description="A hammer imbued with lightning. +18 attack, +5 speed.",
+        special={
+            "type": "lightning",
+            "chance": 100,
+            "damage": 0,
+            "duration": 1,  # lightning duration in turns
+        },
+        rarity="Mythic",
+    ),
     # ---- ARMOR ----
     "Iron Armor": Item(
         name="Iron Armor",

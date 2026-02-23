@@ -383,6 +383,15 @@ class Character:
         if not self.alive() or not other.alive():
             return
 
+        # Check for lightning status on target (take 25% more damage, then remove effect)
+        lightning_bonus = 1.0
+        for eff in other.status_effects:
+            if eff.get("type") == "lightning":
+                lightning_bonus = 1.25
+                eff["duration"] = 0  # Remove after use
+                print(f"⚡ {other.name} takes 25% more damage from lightning!")
+                break
+
         # Calculate dodge chance
         dodge_chance = other.speed - self.attack_speed
 
@@ -400,7 +409,9 @@ class Character:
         defense_percent = max(0, min(75, other.defense))
 
         final_damage = damage * (1 - defense_percent / 100)
-        final_damage = int(final_damage)
+        final_damage = int(
+            final_damage * lightning_bonus
+        )  # Apply lightning bonus if applicable
 
         # ------ Critical hit formula ----------------
 
@@ -462,6 +473,26 @@ class Character:
                             )
                             print(
                                 f"☠️ {other.name} was poisoned and will take {poison} damage for {duration} turns!"
+                            )
+
+                if special and special.get("type") == "lightning":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        duration = special.get("duration", 2)
+                        # Prevent duplicate lightning
+                        if not any(
+                            eff.get("type") == "lightning"
+                            for eff in other.status_effects
+                        ):
+                            other.status_effects.append(
+                                {
+                                    "type": "lightning",
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"⚡ {other.name} is charged with lightning! Next attack will deal 25% more damage!"
                             )
 
                 if special and special.get("type") == "freeze":

@@ -371,6 +371,15 @@ class Character:
                     self.turn_skipped = True
                     print(f"{self.name} is slowed by freeze and may lose their turn!")
 
+            elif etype == "armor break":
+                # If this is the last turn, restore defense
+                if turns_left == 1 and hasattr(self, "_original_defense"):
+                    self.defense = self._original_defense
+                    del self._original_defense
+                    print(f"🛡️ {self.name}'s armor is restored!")
+
+            # ...existing code...
+
             # decrement duration
             eff["duration"] = turns_left - 1
             if eff["duration"] > 0:
@@ -429,6 +438,7 @@ class Character:
             other.health = 0
 
         # Special weapon effects (e.g., burn) -> apply as DOT status effect
+        # ARMOR BREAK: halve defense for 1 turn, restore after effect expires
         try:
             if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
                 weapon = ITEM_DATABASE[self.equipped_weapon]
@@ -515,6 +525,32 @@ class Character:
                             print(
                                 f"❄️ {other.name} was frozen and will take {freeze} damage for {duration} turns!"
                             )
+
+                if special and special.get("type", "").lower() == "armor break":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        duration = special.get("duration", 1)
+                        # Prevent duplicate Armor Break
+                        if not any(
+                            eff.get("type") == "armor break"
+                            for eff in other.status_effects
+                        ):
+                            # Store original defense if not already stored
+                            if not hasattr(other, "_original_defense"):
+                                other._original_defense = other.defense
+                            other.defense = max(0, int(other.defense * 0.5))
+                            other.status_effects.append(
+                                {
+                                    "type": "armor break",
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"🛡️ {other.name}'s armor is broken! Defense halved for {duration} turn!"
+                            )
+
+                # ...existing code...
 
         except Exception:
             pass

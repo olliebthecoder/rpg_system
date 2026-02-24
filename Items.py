@@ -215,6 +215,34 @@ ITEM_DATABASE = {
         },
         rarity="Mythic",
     ),
+    "Titan Hammer": Item(
+        name="Titan Hammer",
+        item_type="weapon",
+        bonuses={"attack": 25, "speed": -5},
+        price=1200,
+        description="A massive hammer, unmatched in power. +25 attack, -5 speed.",
+        special={
+            "type": "Armor Break",
+            "chance": 100,
+            "damage": 0,
+            "duration": 1,  # Armor Break duration in turns
+        },
+        rarity="Mythic",
+    ),
+    "Draining Axe": Item(
+        name="Draining Axe",
+        item_type="weapon",
+        bonuses={"attack": 12, "Bleed": 5},
+        price=750,
+        description="An axe that drains health from enemies. +12 attack, drains 5 HP from enemies.",
+        special={
+            "type": "Bleed",
+            "chance": 100,
+            "damage": lambda final_damage: int(final_damage * 0.2),  # Bleed damage is 20% of final damage
+            "duration": 2,  # Bleed duration in turns
+        },
+        rarity="Mythic",
+    ),
     # ---- ARMOR ----
     "Iron Armor": Item(
         name="Iron Armor",

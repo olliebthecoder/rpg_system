@@ -48,6 +48,10 @@ class Character:
         self.equipped_attack_bonus = 0
         self.equipped_defense_bonus = 0
 
+        # Store base stats for correct saving/loading
+        self.base_attack_power = attack_power
+        self.base_defense = defense
+
     def save(self):
         data = {
             "name": self.name,
@@ -56,10 +60,11 @@ class Character:
             "xp_to_next": self.xp_to_next,
             "max_health": self.max_health,
             "health": self.health,
-            "attack_power": self.attack_power,
+            # Save base stats, not boosted
+            "attack_power": self.base_attack_power,
+            "defense": self.base_defense,
             "speed": self.speed,
             "attack_speed": self.attack_speed,
-            "defense": self.defense,
             "gold": self.gold,
             "inventory": self.inventory,
             "equipped_weapon": self.equipped_weapon,
@@ -134,6 +139,12 @@ class Character:
             self.equipped_weapon = data.get("equipped_weapon", self.equipped_weapon)
             self.equipped_armor = data.get("equipped_armor", self.equipped_armor)
             self.crit_chance = data.get("crit_chance", self.crit_chance)
+
+            # Reset stats to base values from save file before applying equipment bonuses
+            self.base_attack_power = data.get("attack_power", self.attack_power)
+            self.base_defense = data.get("defense", self.defense)
+            self.attack_power = self.base_attack_power
+            self.defense = self.base_defense
 
             # reapply equipment bonuses when loading
             self._recalc_equipped_bonuses()
@@ -341,6 +352,13 @@ class Character:
             etype = eff.get("type")
             dmg = eff.get("damage", 0)
             turns_left = eff.get("duration", 1)
+            if etype == "Bleed":
+                self.health -= dmg
+                if self.health < 0:
+                    self.health = 0
+                print(
+                    f"🩸 {self.name} takes {dmg} bleed damage! ({self.health} HP left) [{turns_left} turns left]"
+                )
             if etype == "burn":
                 self.health -= dmg
                 if self.health < 0:
@@ -443,6 +461,29 @@ class Character:
             if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
                 weapon = ITEM_DATABASE[self.equipped_weapon]
                 special = getattr(weapon, "special", None)
+                # BLEED: applies a percent of this attack's final_damage as DOT
+                if special and special.get("type") == "Bleed":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        bleed_percent = special.get("percent", 0.2)  # Default 20%
+                        bleed_damage = int(final_damage * bleed_percent)
+                        duration = special.get("duration", 3)
+                        # Prevent duplicate bleed
+                        if not any(
+                            eff.get("type") == "bleed" for eff in other.status_effects
+                        ):
+                            other.status_effects.append(
+                                {
+                                    "type": "Bleed",
+                                    "damage": bleed_damage,
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"🩸 {other.name} is bleeding! Will take {bleed_damage} damage for {duration} turns!"
+                            )
+
                 if special and special.get("type") == "burn":
                     chance = special.get("chance", 0)
                     if random.randint(1, 100) <= chance:

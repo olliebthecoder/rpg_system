@@ -234,12 +234,30 @@ ITEM_DATABASE = {
         item_type="weapon",
         bonuses={"attack": 12, "Bleed": 5},
         price=750,
-        description="An axe that drains health from enemies. +12 attack, drains 5 HP from enemies.",
+        description="An axe that drains health from enemies. +12 attack, deals 20% of damage as bleed.",
         special={
             "type": "Bleed",
             "chance": 100,
-            "damage": lambda final_damage: int(final_damage * 0.2),  # Bleed damage is 20% of final damage
+            "damage": lambda final_damage: int(
+                final_damage * 0.2
+            ),  # Bleed damage is 20% of final damage
             "duration": 2,  # Bleed duration in turns
+        },
+        rarity="Mythic",
+    ),
+    "Weakening Rapier": Item(
+        name="Weakening Rapier",
+        item_type="weapon",
+        bonuses={"attack": 10, "speed": 10},
+        price=850,
+        description="A rapier that weakens enemies. +10 attack, +10 speed, reduces enemy max health by 20% and reduces their damage by 20% for the rest of the battle.",
+        special={
+            "type": "Weaken",
+            "chance": 100,
+            "damage": lambda max_health: int(
+                max_health * 0.2
+            ),  # Curse reduces max health by 20%
+            "duration": -1,  # Curse is permanent until removed
         },
         rarity="Mythic",
     ),

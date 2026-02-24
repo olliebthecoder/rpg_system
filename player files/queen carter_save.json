@@ -1,1 +1,1 @@
-{"name": "queen carter", "level": 1, "xp": 50, "xp_to_next": 100, "max_health": 150, "health": 0, "attack_power": 20, "defense": 25, "speed": 65, "attack_speed": 50, "gold": 20, "inventory": {"Iron Sword": 1}, "equipped_weapon": "Iron Sword", "equipped_armor": null}
+{"name": "queen carter", "level": 1, "xp": 0, "xp_to_next": 150, "max_health": 170, "health": 153, "attack_power": 20, "defense": 25, "speed": 68, "attack_speed": 53, "gold": 40, "inventory": {"Iron Sword": 1, "Health Potion": 1, "Weakening Rapier": 1}, "equipped_weapon": "Iron Sword", "equipped_armor": null}

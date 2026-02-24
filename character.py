@@ -396,6 +396,18 @@ class Character:
                     del self._original_defense
                     print(f"🛡️ {self.name}'s armor is restored!")
 
+            elif etype == "Weaken":
+                # Weaken reduces max health and attack power for the rest of the battle
+                if turns_left == eff.get("duration", 3):
+                    max_health_reduction = int(self.max_health * 0.2)
+                    attack_reduction = int(self.attack_power * 0.2)
+                    self.max_health -= max_health_reduction
+                    if self.health > self.max_health:
+                        self.health = self.max_health
+                    self.attack_power -= attack_reduction
+                    print(
+                        f"{self.name} is weakened! Max health reduced by {max_health_reduction} and attack power reduced by {attack_reduction} for the rest of the battle!"
+                    )
             # ...existing code...
 
             # decrement duration
@@ -591,6 +603,26 @@ class Character:
                                 f"🛡️ {other.name}'s armor is broken! Defense halved for {duration} turn!"
                             )
 
+                if special and special.get("type") == "Weaken":
+                    chance = special.get("chance", 0)
+                    if random.randint(1, 100) <= chance:
+                        duration = special.get(
+                            "duration", -1
+                        )  # Permanent until removed
+                        # Prevent duplicate Weaken
+                        if not any(
+                            eff.get("type") == "Weaken" for eff in other.status_effects
+                        ):
+                            other.status_effects.append(
+                                {
+                                    "type": "Weaken",
+                                    "duration": duration,
+                                    "source": self.name,
+                                }
+                            )
+                            print(
+                                f"⚔️ {other.name} is weakened! Max health and attack power reduced by 20% for the rest of the battle!"
+                            )
                 # ...existing code...
 
         except Exception:

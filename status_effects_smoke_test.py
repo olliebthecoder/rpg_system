@@ -52,8 +52,12 @@ def main() -> None:
         burn_damage = ITEM_DATABASE["Flame Sword"].special["damage"]
         hp_before = target.health
         tick_n(target, burn_duration)
-        assert target.health == hp_before - (burn_damage * burn_duration), "Burn damage tick total mismatch."
-        assert not any(s.get("type") == "burn" for s in target.status_effects), "Burn should expire."
+        assert target.health == hp_before - (
+            burn_damage * burn_duration
+        ), "Burn damage tick total mismatch."
+        assert not any(
+            s.get("type") == "burn" for s in target.status_effects
+        ), "Burn should expire."
 
         # Poison
         attacker = make_char("Poisoner")
@@ -65,8 +69,12 @@ def main() -> None:
         poison_damage = ITEM_DATABASE["Shadow Dagger"].special["damage"]
         hp_before = target.health
         tick_n(target, poison_duration)
-        assert target.health == hp_before - (poison_damage * poison_duration), "Poison damage tick total mismatch."
-        assert not any(s.get("type") == "poison" for s in target.status_effects), "Poison should expire."
+        assert target.health == hp_before - (
+            poison_damage * poison_duration
+        ), "Poison damage tick total mismatch."
+        assert not any(
+            s.get("type") == "poison" for s in target.status_effects
+        ), "Poison should expire."
 
         # Bleed should not duplicate
         attacker = make_char("Bleeder")
@@ -86,11 +94,17 @@ def main() -> None:
         attacker.attack(target)
         freeze = assert_single_status(target, "freeze")
         assert target.speed == base_speed - 10, "Freeze speed penalty not applied."
-        assert target.attack_speed == base_attack_speed - 10, "Freeze attack_speed penalty not applied."
+        assert (
+            target.attack_speed == base_attack_speed - 10
+        ), "Freeze attack_speed penalty not applied."
         tick_n(target, freeze["duration"])
         assert target.speed == base_speed, "Freeze speed penalty did not restore."
-        assert target.attack_speed == base_attack_speed, "Freeze attack_speed penalty did not restore."
-        assert not any(s.get("type") == "freeze" for s in target.status_effects), "Freeze should expire."
+        assert (
+            target.attack_speed == base_attack_speed
+        ), "Freeze attack_speed penalty did not restore."
+        assert not any(
+            s.get("type") == "freeze" for s in target.status_effects
+        ), "Freeze should expire."
 
         # Armor break should restore defense on expiry
         attacker = make_char("Breaker")
@@ -100,10 +114,14 @@ def main() -> None:
         equip_weapon(attacker, "Titan Hammer")
         attacker.attack(target)
         armor_break = assert_single_status(target, "armor break")
-        assert target.defense == int(original_def * 0.5), "Armor break did not halve defense."
+        assert target.defense == int(
+            original_def * 0.5
+        ), "Armor break did not halve defense."
         tick_n(target, armor_break["duration"])
         assert target.defense == original_def, "Armor break did not restore defense."
-        assert not any(s.get("type") == "armor break" for s in target.status_effects), "Armor break should expire."
+        assert not any(
+            s.get("type") == "armor break" for s in target.status_effects
+        ), "Armor break should expire."
 
         # Weaken should apply once (20% less attack + defense) and remain active with negative duration
         attacker = make_char("Weakener")
@@ -120,12 +138,20 @@ def main() -> None:
         target.process_status_effects()  # should not apply reduction a second time
         assert target.attack_power == first_atk, "Weaken reapplied attack reduction."
         assert target.defense == first_def, "Weaken reapplied defense reduction."
-        assert target.attack_power < start_atk and target.defense < start_def, "Weaken did not apply reduction."
+        assert (
+            target.attack_power < start_atk and target.defense < start_def
+        ), "Weaken did not apply reduction."
         expected_atk = start_atk - int(start_atk * 0.2)
         expected_def = start_def - int(start_def * 0.2)
-        assert first_atk == expected_atk, f"Weaken attack reduction mismatch: expected {expected_atk}, got {first_atk}."
-        assert first_def == expected_def, f"Weaken defense reduction mismatch: expected {expected_def}, got {first_def}."
-        assert any(s.get("type") == "Weaken" for s in target.status_effects), "Weaken should remain active with negative duration."
+        assert (
+            first_atk == expected_atk
+        ), f"Weaken attack reduction mismatch: expected {expected_atk}, got {first_atk}."
+        assert (
+            first_def == expected_def
+        ), f"Weaken defense reduction mismatch: expected {expected_def}, got {first_def}."
+        assert any(
+            s.get("type") == "Weaken" for s in target.status_effects
+        ), "Weaken should remain active with negative duration."
 
         # Lightning should amplify exactly one next hit, then clear
         applier = make_char("LightningApplier")
@@ -138,8 +164,12 @@ def main() -> None:
         assert_single_status(target, "lightning")
         hp_before = target.health
         attacker.attack(target)
-        assert target.health == hp_before - 25, "Lightning bonus damage expected to be 25% (20 -> 25)."
-        assert not any(s.get("type") == "lightning" for s in target.status_effects), "Lightning should be consumed after one hit."
+        assert (
+            target.health == hp_before - 25
+        ), "Lightning bonus damage expected to be 25% (20 -> 25)."
+        assert not any(
+            s.get("type") == "lightning" for s in target.status_effects
+        ), "Lightning should be consumed after one hit."
 
         print("All status effect smoke tests passed.")
     finally:

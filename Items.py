@@ -187,12 +187,12 @@ ITEM_DATABASE = {
         },
         rarity="Mythic",
     ),
-    "Ice Scythe": Item(
+    "Ice sword": Item(
         name="Ice Scythe",
         item_type="weapon",
         bonuses={"attack": 12},
         price=800,
-        description="A scythe imbued with ice. +12 attack, slows down opponent .",
+        description="A sword imbued with ice. +12 attack, slows down opponent .",
         special={
             "type": "freeze",
             "chance": 100,
@@ -259,6 +259,46 @@ ITEM_DATABASE = {
             "duration": -1,  # Weaken is permanent until removed
         },
         rarity="Mythic",
+    ),
+    "test_sword": Item(
+        name="Test Sword",
+        item_type="weapon",
+        bonuses={"attack": 5},
+        price=0,
+        description="A sword for testing. +5 attack.",
+        rarity="Common",
+    ),
+    "test_axe": Item(
+        name="Test Axe",
+        item_type="weapon",
+        bonuses={"attack": 6, "speed": -4, "attack_speed": -4},
+        price=0,
+        description="An axe for testing. +6 attack.",
+        rarity="Common",
+    ),
+    "test_rapier": Item(
+        name="Test Rapier",
+        item_type="weapon",
+        bonuses={"attack": 4, "speed": 6, "attack_speed": 6},
+        price=0,
+        description="A rapier for testing. +4 attack, +5 speed.",
+        rarity="Common",
+    ),
+    "test_hammer": Item(
+        name="Test Hammer",
+        item_type="weapon",
+        bonuses={"attack": 7, "speed": -6, "attack_speed": -6},
+        price=0,
+        description="A hammer for testing. +7 attack.",
+        rarity="Common",
+    ),
+    "test_dagger": Item(
+        name="Test Dagger",
+        item_type="weapon",
+        bonuses={"attack": 3, "speed": 10, "attack_speed": 10},
+        price=0,
+        description="A dagger for testing. +3 attack.",
+        rarity="Common",
     ),
     # ---- ARMOR ----
     "Iron Armor": Item(

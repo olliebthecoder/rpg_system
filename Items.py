@@ -211,7 +211,7 @@ ITEM_DATABASE = {
             "type": "lightning",
             "chance": 100,
             "damage": 0,
-            "duration": 1,  # lightning duration in turns
+            "duration": 2,  # lightning duration in turns
         },
         rarity="Mythic",
     ),
@@ -225,7 +225,7 @@ ITEM_DATABASE = {
             "type": "Armor Break",
             "chance": 100,
             "damage": 0,
-            "duration": 1,  # Armor Break duration in turns
+            "duration": 2,  # Armor Break duration in turns
         },
         rarity="Mythic",
     ),
@@ -250,14 +250,13 @@ ITEM_DATABASE = {
         item_type="weapon",
         bonuses={"attack": 10, "speed": 10},
         price=850,
-        description="A rapier that weakens enemies. +10 attack, +10 speed, reduces enemy max health by 20% and reduces their damage by 20% for the rest of the battle.",
+        description="A rapier that weakens enemies. +10 attack, +10 speed, reduces enemy attack and defense by 20% for the rest of the battle.",
         special={
             "type": "Weaken",
             "chance": 100,
-            "damage": lambda max_health: int(
-                max_health * 0.2
-            ),  # Curse reduces max health by 20%
-            "duration": -1,  # Curse is permanent until removed
+            "attack_pct": 0.2,
+            "defense_pct": 0.2,
+            "duration": -1,  # Weaken is permanent until removed
         },
         rarity="Mythic",
     ),

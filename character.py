@@ -47,6 +47,8 @@ class Character:
         # base stat bonuses from equipped items
         self.equipped_attack_bonus = 0
         self.equipped_defense_bonus = 0
+        self.equipped_speed_bonus = 0
+        self.temp_speed_buff = 0
 
         # Store base stats for correct saving/loading
         self.base_attack_power = attack_power
@@ -101,6 +103,9 @@ class Character:
             self.speed += 3
             self.attack_speed += 3
             self.defense += 1
+            # Keep base stats in sync so save/load doesn't drop level-up gains.
+            self.base_attack_power += 5
+            self.base_defense += 1
 
             print(f"Stats increased!")
             print(f"HP: {self.max_health}")
@@ -199,16 +204,15 @@ class Character:
 
         # item_data is now an Item object with .type, .effect, .value attributes
         if item_data.type == "consumable":
-            # remove from inventory (use inventory_key since inventory uses Title Case)
-            self.remove_item(inventory_key, 1)
-
             effect = item_data.effect
             if effect == "heal":
+                self.remove_item(inventory_key, 1)
                 heal_amount = int(self.max_health * item_data.value)
                 self.health = min(self.max_health, self.health + heal_amount)
                 print(f"{self.name} healed for {heal_amount} HP!")
 
             elif effect == "defend":
+                self.remove_item(inventory_key, 1)
                 defense_buff = item_data.value
                 # apply temporary defense buff tracked separately so end_defend() removes correctly
                 self.temp_defense_buff += defense_buff
@@ -216,6 +220,23 @@ class Character:
                 self.is_defending = True
                 print(
                     f"{self.name}'s defense increased by {defense_buff} for this turn."
+                )
+            elif effect == "speed":
+                self.remove_item(inventory_key, 1)
+                speed_buff = item_data.value
+                self.temp_speed_buff += speed_buff
+                self.speed += speed_buff
+                print(f"{self.name}'s speed increased by {speed_buff} for this turn.")
+            elif effect == "heal_defend":
+                self.remove_item(inventory_key, 1)
+                heal_amount = int(self.max_health * item_data.value["heal"])
+                defense_buff = item_data.value["defend"]
+                self.health = min(self.max_health, self.health + heal_amount)
+                self.temp_defense_buff += defense_buff
+                self.defense += defense_buff
+                self.is_defending = True
+                print(
+                    f"{self.name} healed for {heal_amount} HP and defense increased by {defense_buff} for this turn."
                 )
             else:
                 print(f"{inventory_key} can't be used right now.")
@@ -298,12 +319,14 @@ class Character:
         self._recalc_equipped_bonuses()
 
     def _recalc_equipped_bonuses(self) -> None:
-        """Recalculate and apply attack/defense bonuses from equipped items."""
+        """Recalculate and apply attack/defense/speed bonuses from equipped items."""
         # Reset bonuses
         self.attack_power -= self.equipped_attack_bonus
         self.defense -= self.equipped_defense_bonus
+        self.speed -= self.equipped_speed_bonus
         self.equipped_attack_bonus = 0
         self.equipped_defense_bonus = 0
+        self.equipped_speed_bonus = 0
 
         # Apply weapon bonuses
         if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
@@ -311,6 +334,9 @@ class Character:
             if weapon.bonuses.get("attack"):
                 self.equipped_attack_bonus = weapon.bonuses["attack"]
                 self.attack_power += self.equipped_attack_bonus
+            if weapon.bonuses.get("speed"):
+                self.equipped_speed_bonus += weapon.bonuses["speed"]
+                self.speed += weapon.bonuses["speed"]
 
         # Apply armor bonuses
         if self.equipped_armor and self.equipped_armor in ITEM_DATABASE:
@@ -318,6 +344,9 @@ class Character:
             if armor.bonuses.get("defense"):
                 self.equipped_defense_bonus = armor.bonuses["defense"]
                 self.defense += self.equipped_defense_bonus
+            if armor.bonuses.get("speed"):
+                self.equipped_speed_bonus += armor.bonuses["speed"]
+                self.speed += armor.bonuses["speed"]
 
     def defend(self):
         if self.is_defending:
@@ -333,14 +362,17 @@ class Character:
         )
 
     def end_defend(self):
-        if not self.is_defending:
-            return
+        if self.is_defending:
+            # remove whatever temporary defense buff was applied
+            self.defense -= self.temp_defense_buff
+            self.temp_defense_buff = 0
+            self.is_defending = False
+            print(f"{self.name} stopped defending. Defense back to {self.defense}.")
 
-        # remove whatever temporary defense buff was applied
-        self.defense -= self.temp_defense_buff
-        self.temp_defense_buff = 0
-        self.is_defending = False
-        print(f"{self.name} stopped defending. Defense back to {self.defense}.")
+        if self.temp_speed_buff > 0:
+            self.speed = max(0, self.speed - self.temp_speed_buff)
+            self.temp_speed_buff = 0
+            print(f"{self.name}'s speed boost wore off.")
 
     def process_status_effects(self):
         """Apply and tick down status effects like burn at the start of the character's turn."""
@@ -381,13 +413,14 @@ class Character:
                 print(
                     f"❄️ {self.name} takes {dmg} freeze damage! ({self.health} HP left) [{turns_left} turns left]"
                 )
-                # Apply slow effect
-                self.speed = max(0, self.speed - 10)
-                self.attack_speed = max(0, self.attack_speed - 10)
                 # 50% chance to skip turn
                 if random.random() < 0.5:
                     self.turn_skipped = True
                     print(f"{self.name} is slowed by freeze and may lose their turn!")
+                # Restore temporary freeze slow when it expires.
+                if turns_left == 1:
+                    self.speed += eff.get("speed_penalty", 0)
+                    self.attack_speed += eff.get("attack_speed_penalty", 0)
 
             elif etype == "armor break":
                 # If this is the last turn, restore defense
@@ -397,23 +430,35 @@ class Character:
                     print(f"🛡️ {self.name}'s armor is restored!")
 
             elif etype == "Weaken":
-                # Weaken reduces max health and attack power for the rest of the battle
-                if turns_left == eff.get("duration", 3):
-                    max_health_reduction = int(self.max_health * 0.2)
-                    attack_reduction = int(self.attack_power * 0.2)
-                    self.max_health -= max_health_reduction
-                    if self.health > self.max_health:
-                        self.health = self.max_health
+                # Weaken reduces attack power and defense.
+                if not eff.get("applied", False):
+                    attack_pct = eff.get("attack_pct", 0.2)
+                    defense_pct = eff.get("defense_pct", 0.2)
+                    attack_reduction = int(self.attack_power * attack_pct)
+                    defense_reduction = int(self.defense * defense_pct)
                     self.attack_power -= attack_reduction
+                    self.defense = max(0, self.defense - defense_reduction)
+                    eff["attack_reduction"] = attack_reduction
+                    eff["defense_reduction"] = defense_reduction
+                    eff["applied"] = True
                     print(
-                        f"{self.name} is weakened! Max health reduced by {max_health_reduction} and attack power reduced by {attack_reduction} for the rest of the battle!"
+                        f"{self.name} is weakened! Attack reduced by {attack_reduction} and defense reduced by {defense_reduction}."
                     )
+                elif turns_left == 1 and turns_left >= 0:
+                    # If weaken has a finite duration, restore stats on expiry.
+                    self.attack_power += eff.get("attack_reduction", 0)
+                    self.defense += eff.get("defense_reduction", 0)
+                    print(f"{self.name} is no longer weakened.")
             # ...existing code...
 
             # decrement duration
-            eff["duration"] = turns_left - 1
-            if eff["duration"] > 0:
+            if turns_left < 0:
+                # Negative duration means permanent until battle reset/clear.
                 remaining.append(eff)
+            else:
+                eff["duration"] = turns_left - 1
+                if eff["duration"] > 0:
+                    remaining.append(eff)
 
         self.status_effects = remaining
 
@@ -424,10 +469,10 @@ class Character:
 
         # Check for lightning status on target (take 25% more damage, then remove effect)
         lightning_bonus = 1.0
-        for eff in other.status_effects:
-            if eff.get("type") == "lightning":
+        for eff in list(other.status_effects):
+            if eff.get("type") == "lightning" and eff.get("duration", 0) > 0:
                 lightning_bonus = 1.25
-                eff["duration"] = 0  # Remove after use
+                other.status_effects.remove(eff)  # Consume immediately after use
                 print(f"⚡ {other.name} takes 25% more damage from lightning!")
                 break
 
@@ -482,7 +527,7 @@ class Character:
                         duration = special.get("duration", 3)
                         # Prevent duplicate bleed
                         if not any(
-                            eff.get("type") == "bleed" for eff in other.status_effects
+                            eff.get("type") == "Bleed" for eff in other.status_effects
                         ):
                             other.status_effects.append(
                                 {
@@ -563,15 +608,23 @@ class Character:
                     if random.randint(1, 100) <= chance:
                         freeze = special.get("damage", 0)
                         duration = special.get("duration", 3)
+                        speed_penalty = 10
+                        attack_speed_penalty = 10
                         # Prevent duplicate freeze
                         if not any(
                             eff.get("type") == "freeze" for eff in other.status_effects
                         ):
+                            other.speed = max(0, other.speed - speed_penalty)
+                            other.attack_speed = max(
+                                0, other.attack_speed - attack_speed_penalty
+                            )
                             other.status_effects.append(
                                 {
                                     "type": "freeze",
                                     "damage": freeze,
                                     "duration": duration,
+                                    "speed_penalty": speed_penalty,
+                                    "attack_speed_penalty": attack_speed_penalty,
                                     "source": self.name,
                                 }
                             )
@@ -609,6 +662,8 @@ class Character:
                         duration = special.get(
                             "duration", -1
                         )  # Permanent until removed
+                        attack_pct = special.get("attack_pct", 0.2)
+                        defense_pct = special.get("defense_pct", 0.2)
                         # Prevent duplicate Weaken
                         if not any(
                             eff.get("type") == "Weaken" for eff in other.status_effects
@@ -617,16 +672,18 @@ class Character:
                                 {
                                     "type": "Weaken",
                                     "duration": duration,
+                                    "attack_pct": attack_pct,
+                                    "defense_pct": defense_pct,
                                     "source": self.name,
                                 }
                             )
                             print(
-                                f"⚔️ {other.name} is weakened! Max health and attack power reduced by 20% for the rest of the battle!"
+                                f"⚔️ {other.name} is weakened! They deal 20% less damage and lose 20% defense."
                             )
                 # ...existing code...
 
-        except Exception:
-            pass
+        except Exception as err:
+            print(f"Error applying weapon special effects: {err}")
 
         print(f"{self.name} hit {other.name} for {final_damage} damage!")
         print(f"{other.name} has {other.health} HP left.\n")

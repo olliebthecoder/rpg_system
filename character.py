@@ -48,6 +48,8 @@ class Character:
         self.equipped_attack_bonus = 0
         self.equipped_defense_bonus = 0
         self.equipped_speed_bonus = 0
+        self.equipped_attack_speed_bonus = 0
+        self.equipped_crit_bonus = 0
         self.temp_speed_buff = 0
 
         # Store base stats for correct saving/loading
@@ -160,19 +162,28 @@ class Character:
 
             # Backward compatibility: older saves don't have base_speed fields.
             speed_bonus_from_equipment = 0
+            attack_speed_bonus_from_equipment = 0
             if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
                 speed_bonus_from_equipment += ITEM_DATABASE[
                     self.equipped_weapon
                 ].bonuses.get("speed", 0)
+                attack_speed_bonus_from_equipment += ITEM_DATABASE[
+                    self.equipped_weapon
+                ].bonuses.get("attack_speed", 0)
             if self.equipped_armor and self.equipped_armor in ITEM_DATABASE:
                 speed_bonus_from_equipment += ITEM_DATABASE[
                     self.equipped_armor
                 ].bonuses.get("speed", 0)
+                attack_speed_bonus_from_equipment += ITEM_DATABASE[
+                    self.equipped_armor
+                ].bonuses.get("attack_speed", 0)
 
             self.base_speed = data.get(
                 "base_speed", saved_speed - speed_bonus_from_equipment
             )
-            self.base_attack_speed = data.get("base_attack_speed", saved_attack_speed)
+            self.base_attack_speed = data.get(
+                "base_attack_speed", saved_attack_speed - attack_speed_bonus_from_equipment
+            )
             self.attack_power = self.base_attack_power
             self.defense = self.base_defense
             self.speed = self.base_speed
@@ -180,6 +191,8 @@ class Character:
             self.equipped_attack_bonus = 0
             self.equipped_defense_bonus = 0
             self.equipped_speed_bonus = 0
+            self.equipped_attack_speed_bonus = 0
+            self.equipped_crit_bonus = 0
 
             # reapply equipment bonuses when loading
             self._recalc_equipped_bonuses()
@@ -354,9 +367,13 @@ class Character:
         self.attack_power -= self.equipped_attack_bonus
         self.defense -= self.equipped_defense_bonus
         self.speed -= self.equipped_speed_bonus
+        self.attack_speed -= self.equipped_attack_speed_bonus
+        self.crit_chance -= self.equipped_crit_bonus
         self.equipped_attack_bonus = 0
         self.equipped_defense_bonus = 0
         self.equipped_speed_bonus = 0
+        self.equipped_attack_speed_bonus = 0
+        self.equipped_crit_bonus = 0
 
         # Apply weapon bonuses
         if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
@@ -367,6 +384,12 @@ class Character:
             if weapon.bonuses.get("speed"):
                 self.equipped_speed_bonus += weapon.bonuses["speed"]
                 self.speed += weapon.bonuses["speed"]
+            if weapon.bonuses.get("crit_chance"):
+                self.equipped_crit_bonus += weapon.bonuses["crit_chance"]
+                self.crit_chance += weapon.bonuses["crit_chance"]
+            if weapon.bonuses.get("attack_speed"):
+                self.equipped_attack_speed_bonus += weapon.bonuses["attack_speed"]
+                self.attack_speed += weapon.bonuses["attack_speed"]
 
         # Apply armor bonuses
         if self.equipped_armor and self.equipped_armor in ITEM_DATABASE:
@@ -377,6 +400,12 @@ class Character:
             if armor.bonuses.get("speed"):
                 self.equipped_speed_bonus += armor.bonuses["speed"]
                 self.speed += armor.bonuses["speed"]
+            if armor.bonuses.get("attack_speed"):
+                self.equipped_attack_speed_bonus += armor.bonuses["attack_speed"]
+                self.attack_speed += armor.bonuses["attack_speed"]
+            if armor.bonuses.get("crit_chance"):
+                self.equipped_crit_bonus += armor.bonuses["crit_chance"]
+                self.crit_chance += armor.bonuses["crit_chance"]
 
     def defend(self):
         if self.is_defending:

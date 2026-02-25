@@ -141,6 +141,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 5},
         price=100,
         description="A sturdy iron sword. +5 attack.",
+        special={"crit_chance": 10, "crit_multiplier": 1.5},
         rarity="Common",
     ),
     "Steel Sword": Item(
@@ -149,14 +150,16 @@ ITEM_DATABASE = {
         bonuses={"attack": 10},
         price=200,
         description="A sharp steel blade. +10 attack.",
+        special={"crit_chance": 10, "crit_multiplier": 1.5},
         rarity="Uncommon",
     ),
-    "Legendary Blade": Item(
-        name="Legendary Blade",
+    "Legendary sword": Item(
+        name="Legendary sword",
         item_type="weapon",
         bonuses={"attack": 20},
         price=500,
         description="A legendary weapon of immense power. +20 attack.",
+        special={"crit_chance": 10, "crit_multiplier": 1.5},
         rarity="Legendary",
     ),
     "Flame Sword": Item(
@@ -170,6 +173,8 @@ ITEM_DATABASE = {
             "chance": 100,  # 100% chance
             "damage": 5,  # burn damage
             "duration": 3,  # burn duration in turns
+            "crit_chance": 10,
+            "crit_multiplier": 1.5,
         },
         rarity="Mythic",
     ),
@@ -184,11 +189,13 @@ ITEM_DATABASE = {
             "chance": 100,
             "damage": 3,
             "duration": 5,  # poison duration in turns
+            "crit_chance": 20,
+            "crit_multiplier": 2.0,
         },
         rarity="Mythic",
     ),
     "Ice sword": Item(
-        name="Ice Scythe",
+        name="Ice sword",
         item_type="weapon",
         bonuses={"attack": 12},
         price=800,
@@ -198,6 +205,8 @@ ITEM_DATABASE = {
             "chance": 100,
             "damage": 4,
             "duration": 2,  # freeze duration in turns
+            "crit_chance": 10,
+            "crit_multiplier": 1.5,
         },
         rarity="Mythic",
     ),
@@ -212,6 +221,8 @@ ITEM_DATABASE = {
             "chance": 100,
             "damage": 0,
             "duration": 2,  # lightning duration in turns
+            "crit_chance": 5,
+            "crit_multiplier": 2.5,
         },
         rarity="Mythic",
     ),
@@ -226,6 +237,8 @@ ITEM_DATABASE = {
             "chance": 100,
             "damage": 0,
             "duration": 2,  # Armor Break duration in turns
+            "crit_chance": 5,
+            "crit_multiplier": 2.5,
         },
         rarity="Mythic",
     ),
@@ -242,6 +255,8 @@ ITEM_DATABASE = {
                 final_damage * 0.2
             ),  # Bleed damage is 20% of final damage
             "duration": 2,  # Bleed duration in turns
+            "crit_chance": 10,
+            "crit_multiplier": 1.5,
         },
         rarity="Mythic",
     ),
@@ -257,6 +272,8 @@ ITEM_DATABASE = {
             "attack_pct": 0.2,
             "defense_pct": 0.2,
             "duration": -1,  # Weaken is permanent until removed
+            "crit_chance": 15,
+            "crit_multiplier": 1.8,
         },
         rarity="Mythic",
     ),
@@ -266,6 +283,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 5},
         price=0,
         description="A sword for testing. +5 attack.",
+        special={"crit_chance": 10, "crit_multiplier": 1.5},
         rarity="Common",
     ),
     "test_axe": Item(
@@ -274,6 +292,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 6, "speed": -4, "attack_speed": -4},
         price=0,
         description="An axe for testing. +6 attack.",
+        special={"crit_chance": 10, "crit_multiplier": 1.5},
         rarity="Common",
     ),
     "test_rapier": Item(
@@ -282,6 +301,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 4, "speed": 6, "attack_speed": 6},
         price=0,
         description="A rapier for testing. +4 attack, +5 speed.",
+        special={"crit_chance": 15, "crit_multiplier": 1.8},
         rarity="Common",
     ),
     "test_hammer": Item(
@@ -290,6 +310,7 @@ ITEM_DATABASE = {
         bonuses={"attack": 7, "speed": -6, "attack_speed": -6},
         price=0,
         description="A hammer for testing. +7 attack.",
+        special={"crit_chance": 5, "crit_multiplier": 2.5},
         rarity="Common",
     ),
     "test_dagger": Item(
@@ -303,8 +324,8 @@ ITEM_DATABASE = {
             "chance": 60,
             "damage": 5,
             "duration": 2,  # Poison duration in turns
-            "crit_chance": 30,  # Weapon-specific crit chance
-            "crit_multiplier": 2.5,  # Weapon-specific crit multiplier
+            "crit_chance": 20,
+            "crit_multiplier": 2.0,
         },
         rarity="Common",
     ),

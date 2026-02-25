@@ -53,6 +53,9 @@ class Character:
         # Store base stats for correct saving/loading
         self.base_attack_power = attack_power
         self.base_defense = defense
+        self.base_speed = speed
+        self.base_attack_speed = attack_speed
+        self.base_crit_chance = crit_chance
 
     def save(self):
         data = {
@@ -65,6 +68,8 @@ class Character:
             # Save base stats, not boosted
             "attack_power": self.base_attack_power,
             "defense": self.base_defense,
+            "base_speed": self.base_speed,
+            "base_attack_speed": self.base_attack_speed,
             "speed": self.speed,
             "attack_speed": self.attack_speed,
             "gold": self.gold,
@@ -106,6 +111,8 @@ class Character:
             # Keep base stats in sync so save/load doesn't drop level-up gains.
             self.base_attack_power += 5
             self.base_defense += 1
+            self.base_speed += 3
+            self.base_attack_speed += 3
 
             print(f"Stats increased!")
             print(f"HP: {self.max_health}")
@@ -148,8 +155,31 @@ class Character:
             # Reset stats to base values from save file before applying equipment bonuses
             self.base_attack_power = data.get("attack_power", self.attack_power)
             self.base_defense = data.get("defense", self.defense)
+            saved_speed = data.get("speed", self.speed)
+            saved_attack_speed = data.get("attack_speed", self.attack_speed)
+
+            # Backward compatibility: older saves don't have base_speed fields.
+            speed_bonus_from_equipment = 0
+            if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
+                speed_bonus_from_equipment += ITEM_DATABASE[
+                    self.equipped_weapon
+                ].bonuses.get("speed", 0)
+            if self.equipped_armor and self.equipped_armor in ITEM_DATABASE:
+                speed_bonus_from_equipment += ITEM_DATABASE[
+                    self.equipped_armor
+                ].bonuses.get("speed", 0)
+
+            self.base_speed = data.get(
+                "base_speed", saved_speed - speed_bonus_from_equipment
+            )
+            self.base_attack_speed = data.get("base_attack_speed", saved_attack_speed)
             self.attack_power = self.base_attack_power
             self.defense = self.base_defense
+            self.speed = self.base_speed
+            self.attack_speed = self.base_attack_speed
+            self.equipped_attack_bonus = 0
+            self.equipped_defense_bonus = 0
+            self.equipped_speed_bonus = 0
 
             # reapply equipment bonuses when loading
             self._recalc_equipped_bonuses()

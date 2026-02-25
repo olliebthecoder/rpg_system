@@ -303,6 +303,8 @@ ITEM_DATABASE = {
             "chance": 60,
             "damage": 5,
             "duration": 2,  # Poison duration in turns
+            "crit_chance": 30,  # Weapon-specific crit chance
+            "crit_multiplier": 2.5,  # Weapon-specific crit multiplier
         },
         rarity="Common",
     ),

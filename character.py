@@ -559,11 +559,21 @@ class Character:
         # ------ Critical hit formula ----------------
 
         crit_chance = self.crit_chance
+        crit_multiplier = 2.0
+
+        # Weapon-level crit tuning:
+        # - special["crit_chance"]: additive crit chance for this weapon
+        # - special["crit_multiplier"]: crit damage multiplier for this weapon
+        if self.equipped_weapon and self.equipped_weapon in ITEM_DATABASE:
+            weapon = ITEM_DATABASE[self.equipped_weapon]
+            special = getattr(weapon, "special", None) or {}
+            crit_chance += special.get("crit_chance", 0)
+            crit_multiplier = special.get("crit_multiplier", 2.0)
 
         crit_roll = random.randint(1, 100)
 
         if crit_roll <= crit_chance:
-            final_damage *= 2
+            final_damage = int(final_damage * crit_multiplier)
             print("💥 CRITICAL HIT!")
 
             # This code applies damage

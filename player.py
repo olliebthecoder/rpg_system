@@ -9,7 +9,7 @@ def create_ninja():
     # 15% defense
     # 60% crit chance
 
-    return Character("ninja", 100, 15, 75, 45, 15, 60)
+    return Character("ninja", 100, 15, 75, 45, 15, 0)
 
 
 def create_orc():
@@ -20,7 +20,7 @@ def create_orc():
     # 45% defense
     # 20% crit chance
 
-    return Character("orc", 155, 20, 25, 30, 45, 20)  # for klaudia
+    return Character("orc", 155, 20, 25, 30, 45, 0)  # for klaudia
 
 
 def create_queen():
@@ -31,7 +31,7 @@ def create_queen():
     # 25% defense
     # 40% crit chance
 
-    return Character("queen carter", 150, 20, 65, 50, 25, 40)
+    return Character("queen carter", 150, 20, 65, 50, 25, 0)
 
 
 def create_test_char():
@@ -42,7 +42,7 @@ def create_test_char():
     # 35% defense
     # 35% crit chance
 
-    return Character("test char", 100, 20, 35, 35, 35, 35)
+    return Character("test char", 100, 20, 35, 35, 35, 0)
 
 
 def choose_character():

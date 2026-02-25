@@ -34,11 +34,23 @@ def create_queen():
     return Character("queen carter", 150, 20, 65, 50, 25, 40)
 
 
+def create_test_char():
+    # 100HP
+    # 20 attack power
+    # 35 speed
+    # 35 attack speed
+    # 35% defense
+    # 35% crit chance
+
+    return Character("test char", 100, 20, 35, 35, 35, 35)
+
+
 def choose_character():
-    print("choose your character \n")
+    print("Welcome to the game.\n choose your character \n")
     print("1) Ninja")
     print("2) Orc")
     print("3) Queen Carter")
+    print("4) Test Character")
 
     choice = input("> ")
 
@@ -48,6 +60,8 @@ def choose_character():
         return create_orc()
     elif choice == "3":
         return create_queen()
+    elif choice == "4":
+        return create_test_char()
     else:
         print("invalid choice. defaulting to Ninja")
         return create_ninja()

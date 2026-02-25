@@ -1,0 +1,1 @@
+{"name": "test char", "level": 3, "xp": 0, "xp_to_next": 225, "max_health": 140, "health": 0, "attack_power": 30, "defense": 37, "speed": 47, "attack_speed": 41, "gold": 100, "inventory": {"Test_Sword": 1, "Test_Axe": 1, "Test_Rapier": 1, "Test_Hammer": 1, "Test_Dagger": 1, "Iron Sword": 1, "Super Healing Potion": 2}, "equipped_weapon": "Test_Hammer", "equipped_armor": null}

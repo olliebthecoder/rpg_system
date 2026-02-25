@@ -298,6 +298,12 @@ ITEM_DATABASE = {
         bonuses={"attack": 3, "speed": 10, "attack_speed": 10},
         price=0,
         description="A dagger for testing. +3 attack.",
+        special={
+            "type": "poison",
+            "chance": 60,
+            "damage": 5,
+            "duration": 2,  # Poison duration in turns
+        },
         rarity="Common",
     ),
     # ---- ARMOR ----

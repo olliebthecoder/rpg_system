@@ -1,6 +1,17 @@
 from character import Character
 
 
+def _grant_starter_items(character: Character) -> Character:
+    character.add_item("Health Potion", 3)
+    return character
+
+
+def ensure_min_health_potions(character: Character, minimum: int = 3) -> None:
+    current = character.inventory.get("Health Potion", 0)
+    if current < minimum:
+        character.add_item("Health Potion", minimum - current)
+
+
 def create_ninja():
     # 100HP
     # 15 attack power
@@ -9,7 +20,7 @@ def create_ninja():
     # 15% defense
     # 60% crit chance
 
-    return Character("ninja", 100, 15, 75, 45, 15, 0)
+    return _grant_starter_items(Character("ninja", 100, 15, 75, 45, 15, 0))
 
 
 def create_orc():
@@ -20,7 +31,7 @@ def create_orc():
     # 45% defense
     # 20% crit chance
 
-    return Character("orc", 155, 20, 25, 30, 45, 0)  # for klaudia
+    return _grant_starter_items(Character("orc", 155, 20, 25, 30, 45, 0))  # for klaudia
 
 
 def create_queen():
@@ -31,7 +42,7 @@ def create_queen():
     # 25% defense
     # 40% crit chance
 
-    return Character("queen carter", 150, 20, 65, 50, 25, 0)
+    return _grant_starter_items(Character("queen carter", 150, 20, 65, 50, 25, 0))
 
 
 def create_test_char():
@@ -42,7 +53,7 @@ def create_test_char():
     # 35% defense
     # 35% crit chance
 
-    return Character("test char", 100, 20, 35, 35, 35, 0)
+    return _grant_starter_items(Character("test char", 100, 20, 35, 35, 35, 0))
 
 
 def choose_character():

@@ -2,7 +2,13 @@ import sys
 import pygame
 
 from enemy import generate_enemy
-from player import create_ninja, create_orc, create_queen, create_test_char
+from player import (
+    create_ninja,
+    create_orc,
+    create_queen,
+    create_test_char,
+    ensure_min_health_potions,
+)
 from main import finish_battle
 from Items import ITEM_DATABASE
 
@@ -43,6 +49,19 @@ player_turn_started = False
 damage_popups = []
 player_flash_timer = 0
 enemy_flash_timer = 0
+preview_scroll_offset = 0
+preview_max_scroll = 0
+preview_item_key = None
+preview_scroll_rect = pygame.Rect(0, 0, 0, 0)
+
+
+def get_battle_action_buttons():
+    return {
+        "attack": pygame.Rect(220, 534, 130, 34),
+        "defend": pygame.Rect(360, 534, 130, 34),
+        "inventory": pygame.Rect(500, 534, 130, 34),
+        "save": pygame.Rect(640, 534, 130, 34),
+    }
 
 
 def draw_text(text, x, y, color=(255, 255, 255), use_small=False):
@@ -76,6 +95,7 @@ def start_battle(builder):
     global player, enemy, game_state, message, player_turn_started
     player = builder()
     player.load()
+    ensure_min_health_potions(player, 3)
     player.reset_health()
     enemy = generate_enemy(player)
     game_state = "player_turn"
@@ -146,6 +166,12 @@ def format_value(value):
     return str(value)
 
 
+def plus_value(value):
+    if isinstance(value, (int, float)) and value >= 0:
+        return f"+{format_value(value)}"
+    return format_value(value)
+
+
 def resolve_item_data(item_name):
     name = (item_name or "").strip()
     candidates = [
@@ -166,10 +192,57 @@ def resolve_item_data(item_name):
     return None, None
 
 
-def draw_item_preview(panel, item_name):
-    preview_rect = pygame.Rect(panel.x + 16, panel.y + 255, 604, 122)
-    pygame.draw.rect(screen, (56, 56, 56), preview_rect, border_radius=8)
-    pygame.draw.rect(screen, (110, 110, 110), preview_rect, width=1, border_radius=8)
+def pretty_key(name):
+    key = str(name).replace("_", " ").strip().title()
+    aliases = {
+        "Crit Chance": "Crit %",
+        "Crit Multiplier": "Crit Damage",
+        "Attack Pct": "Attack Reduction",
+        "Defense Pct": "Defense Reduction",
+    }
+    return aliases.get(key, key)
+
+
+def build_preview_lines(item):
+    lines = []
+    lines.append(("STATS", (130, 200, 255)))
+    if item.bonuses:
+        for stat, val in item.bonuses.items():
+            stat_name = stat.replace("_", " ").title()
+            lines.append((f"{stat_name}: {plus_value(val)}", (210, 230, 255)))
+    else:
+        lines.append(("No stat bonuses", (170, 170, 170)))
+
+    lines.append(("EFFECTS", (255, 215, 130)))
+    has_effect_info = False
+    if item.effect:
+        has_effect_info = True
+        effect_name = item.effect.replace("_", " ").title()
+        effect_text = f"- {effect_name}: {format_value(item.value)}"
+        for line in wrap_small_text(effect_text, 385):
+            lines.append((line, (210, 250, 220)))
+    if item.special:
+        has_effect_info = True
+        lines.append(("Special Traits:", (255, 225, 170)))
+        for key, val in item.special.items():
+            special_line = f"- {pretty_key(key)}: {format_value(val)}"
+            for line in wrap_small_text(special_line, 385):
+                lines.append((line, (255, 235, 180)))
+    if not has_effect_info:
+        lines.append(("No special effects", (170, 170, 170)))
+
+    # Add a spacer before description for readability.
+    lines.append(("", (225, 225, 225)))
+    lines.append(("DESCRIPTION", (170, 210, 255)))
+    for line in wrap_small_text(item.description, 385):
+        lines.append((line, (225, 225, 225)))
+    return lines
+
+
+def draw_item_preview(panel, item_name, scroll_offset):
+    preview_rect = pygame.Rect(panel.x + 16, panel.y + 238, 420, 140)
+    pygame.draw.rect(screen, (42, 46, 58), preview_rect, border_radius=10)
+    pygame.draw.rect(screen, (118, 140, 178), preview_rect, width=2, border_radius=10)
 
     _, item = resolve_item_data(item_name)
     if not item:
@@ -185,60 +258,59 @@ def draw_item_preview(panel, item_name):
         "HOVER PREVIEW",
         preview_rect.x + 10,
         preview_rect.y + 6,
-        color=(170, 210, 255),
+        color=(160, 220, 255),
         use_small=True,
     )
     draw_text(
         f"{item.name} [{item.type}] ({item.rarity})",
         preview_rect.x + 10,
         preview_rect.y + 30,
+        color=(245, 245, 245),
         use_small=True,
     )
 
-    y = preview_rect.y + 54
-    if item.bonuses:
-        bonus_parts = []
-        for stat, val in item.bonuses.items():
-            sign = "+" if isinstance(val, (int, float)) and val >= 0 else ""
-            bonus_parts.append(f"{stat}:{sign}{format_value(val)}")
-        draw_text(
-            f"Bonuses: {', '.join(bonus_parts)}", preview_rect.x + 10, y, use_small=True
-        )
-        y += 22
+    content_rect = pygame.Rect(
+        preview_rect.x + 8, preview_rect.y + 54, preview_rect.width - 16, 78
+    )
+    pygame.draw.rect(screen, (35, 38, 48), content_rect, border_radius=6)
 
-    if item.effect:
+    lines = build_preview_lines(item)
+    line_height = 18
+    visible_lines = max(1, content_rect.height // line_height)
+    max_scroll = max(0, len(lines) - visible_lines)
+    offset = max(0, min(scroll_offset, max_scroll))
+    visible = lines[offset : offset + visible_lines]
+
+    y = content_rect.y + 2
+    for text, color in visible:
+        draw_text(text, content_rect.x + 6, y, color=color, use_small=True)
+        y += line_height
+
+    if offset > 0:
         draw_text(
-            f"Effect: {item.effect} ({format_value(item.value)})",
-            preview_rect.x + 10,
-            y,
+            "^ more",
+            content_rect.right - 70,
+            content_rect.y - 2,
+            color=(170, 170, 170),
             use_small=True,
         )
-        y += 22
+    if offset < max_scroll:
+        draw_text(
+            "v more",
+            content_rect.right - 70,
+            content_rect.bottom - 16,
+            color=(170, 170, 170),
+            use_small=True,
+        )
 
-    if item.special:
-        special_parts = []
-        for key, val in item.special.items():
-            special_parts.append(f"{key}:{format_value(val)}")
-        special_text = "Special: " + ", ".join(special_parts)
-        for line in wrap_small_text(special_text, preview_rect.width - 20)[:2]:
-            draw_text(line, preview_rect.x + 10, y, use_small=True)
-            y += 20
-
-    desc_lines = wrap_small_text(f"Desc: {item.description}", preview_rect.width - 20)[
-        :2
-    ]
-    for line in desc_lines:
-        if y > preview_rect.bottom - 20:
-            break
-        draw_text(line, preview_rect.x + 10, y, use_small=True)
-        y += 20
+    return content_rect, max_scroll
 
 
 def build_inventory_ui(character, selected_index):
     panel = pygame.Rect(130, 105, 640, 390)
     entries = get_inventory_entries(character)
     list_y = panel.y + 122
-    max_rows = 5
+    max_rows = 4
     start = max(0, min(selected_index - (max_rows // 2), len(entries) - max_rows))
     visible = entries[start : start + max_rows]
 
@@ -249,11 +321,11 @@ def build_inventory_ui(character, selected_index):
         row_rects.append((i, row_rect, item_name, qty))
 
     action_buttons = {
-        "use": pygame.Rect(panel.x + 455, panel.y + 126, 165, 34),
-        "equip": pygame.Rect(panel.x + 455, panel.y + 168, 165, 34),
-        "unequip_weapon": pygame.Rect(panel.x + 455, panel.y + 210, 165, 34),
-        "unequip_armor": pygame.Rect(panel.x + 455, panel.y + 252, 165, 34),
-        "back": pygame.Rect(panel.x + 455, panel.y + 294, 165, 34),
+        "use": pygame.Rect(panel.x + 462, panel.y + 138, 155, 32),
+        "equip": pygame.Rect(panel.x + 462, panel.y + 176, 155, 32),
+        "unequip_weapon": pygame.Rect(panel.x + 462, panel.y + 214, 155, 32),
+        "unequip_armor": pygame.Rect(panel.x + 462, panel.y + 252, 155, 32),
+        "back": pygame.Rect(panel.x + 462, panel.y + 290, 155, 32),
     }
 
     return {
@@ -265,6 +337,7 @@ def build_inventory_ui(character, selected_index):
 
 
 def draw_inventory_panel(character, selected_index):
+    global preview_scroll_offset, preview_max_scroll, preview_item_key, preview_scroll_rect
     ui = build_inventory_ui(character, selected_index)
     panel = ui["panel"]
     entries = ui["entries"]
@@ -303,7 +376,6 @@ def draw_inventory_panel(character, selected_index):
             if is_hovered:
                 hovered_item_name = item_name
 
-            item = ITEM_DATABASE.get(item_name)
             _, item = resolve_item_data(item_name)
             item_type = item.type if item else "unknown"
             draw_text(
@@ -314,7 +386,12 @@ def draw_inventory_panel(character, selected_index):
             )
 
         preview_name = hovered_item_name or entries[selected_index][0]
-        draw_item_preview(panel, preview_name)
+        if preview_name != preview_item_key:
+            preview_item_key = preview_name
+            preview_scroll_offset = 0
+        preview_scroll_rect, preview_max_scroll = draw_item_preview(
+            panel, preview_name, preview_scroll_offset
+        )
 
     for key, rect in action_buttons.items():
         hovered = rect.collidepoint(mouse_pos)
@@ -330,7 +407,7 @@ def draw_inventory_panel(character, selected_index):
         draw_text(label, rect.x + 12, rect.y + 6, use_small=True)
 
     draw_text(
-        "Hover any item for full preview. Click actions or use U/E/W/A/Q.",
+        "Hover any item for full preview. Use mouse wheel on preview to scroll.",
         panel.x + 18,
         panel.y + 380,
         color=(170, 210, 255),
@@ -376,8 +453,40 @@ while running:
                 elif event.key == pygame.K_3:
                     game_state = "inventory_menu"
                     inventory_index = 0
+                    preview_item_key = None
+                    preview_scroll_offset = 0
                     message = "Inventory menu opened."
                 elif event.key == pygame.K_5:
+                    player.save()
+                    game_state = "battle_over"
+                    message = "Game saved. Press R to choose again."
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mx, my = event.pos
+                battle_buttons = get_battle_action_buttons()
+                if battle_buttons["attack"].collidepoint(mx, my):
+                    player.end_defend()
+                    enemy_before = enemy.health
+                    player.attack(enemy)
+                    damage = enemy_before - enemy.health
+                    if damage > 0:
+                        enemy_flash_timer = 10
+                        add_damage_popup("enemy", damage)
+                    game_state = "enemy_turn"
+                    player_turn_started = True
+                    message = "You attacked."
+                elif battle_buttons["defend"].collidepoint(mx, my):
+                    player.end_defend()
+                    player.defend()
+                    game_state = "enemy_turn"
+                    player_turn_started = True
+                    message = "You defended."
+                elif battle_buttons["inventory"].collidepoint(mx, my):
+                    game_state = "inventory_menu"
+                    inventory_index = 0
+                    preview_item_key = None
+                    preview_scroll_offset = 0
+                    message = "Inventory menu opened."
+                elif battle_buttons["save"].collidepoint(mx, my):
                     player.save()
                     game_state = "battle_over"
                     message = "Game saved. Press R to choose again."
@@ -420,6 +529,12 @@ while running:
                     if row_rect.collidepoint(mx, my):
                         inventory_index = idx
                         break
+            elif event.type == pygame.MOUSEWHEEL:
+                mx, my = pygame.mouse.get_pos()
+                if preview_scroll_rect.collidepoint(mx, my):
+                    preview_scroll_offset = max(
+                        0, min(preview_max_scroll, preview_scroll_offset - event.y)
+                    )
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mx, my = event.pos
                 ui = build_inventory_ui(player, inventory_index)
@@ -545,12 +660,19 @@ while running:
         draw_text(message, 60, 500, use_small=True)
 
         if game_state == "player_turn":
-            draw_text(
-                "1 = Attack    2 = Defend    3 = Inventory/Equip    5 = Save and Exit",
-                220,
-                540,
-                use_small=True,
-            )
+            mouse_pos = pygame.mouse.get_pos()
+            battle_buttons = get_battle_action_buttons()
+            labels = {
+                "attack": "Attack",
+                "defend": "Defend",
+                "inventory": "Inventory",
+                "save": "Save",
+            }
+            for key, rect in battle_buttons.items():
+                hovered = rect.collidepoint(mouse_pos)
+                color = (95, 115, 180) if hovered else (70, 85, 145)
+                pygame.draw.rect(screen, color, rect, border_radius=6)
+                draw_text(labels[key], rect.x + 16, rect.y + 6, use_small=True)
 
         if game_state == "inventory_menu":
             entries = get_inventory_entries(player)

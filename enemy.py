@@ -15,7 +15,7 @@ enemy_archetypes = {
     },
     "Assassin": {
         "health": 80,
-        "attack": 25,
+        "attack": 20,
         "speed": 60,
         "attack_speed": 50,
         "defense": 10,
@@ -23,7 +23,7 @@ enemy_archetypes = {
     },
     "Bruiser": {
         "health": 120,
-        "attack": 20,
+        "attack": 15,
         "speed": 30,
         "attack_speed": 30,
         "defense": 20,
@@ -31,7 +31,7 @@ enemy_archetypes = {
     },
     "Glass Cannon": {
         "health": 70,
-        "attack": 40,
+        "attack": 25,
         "speed": 35,
         "attack_speed": 40,
         "defense": 5,

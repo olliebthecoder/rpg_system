@@ -1,7 +1,7 @@
 import random
 
 from enemy import generate_enemy
-from player import choose_character
+from player import choose_character, ensure_min_health_potions
 from Items import ITEM_DATABASE
 
 
@@ -223,6 +223,7 @@ def shop(player) -> None:
 def main() -> None:
     player = choose_character()
     player.load()
+    ensure_min_health_potions(player, 3)
     enemy = generate_enemy(player)
     player.reset_health()
     while player.alive():

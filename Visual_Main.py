@@ -1,4 +1,6 @@
+import io
 import sys
+from contextlib import redirect_stdout
 import pygame
 
 from enemy import generate_enemy
@@ -8,7 +10,6 @@ from player import (
     create_orc,
     create_queen,
     create_test_char,
-    ensure_min_health_potions,
 )
 from Items import ITEM_DATABASE
 from loot.drops import roll_drops
@@ -51,6 +52,8 @@ player_turn_started = False
 
 # Lightweight feedback effects
 damage_popups = []
+battle_log = []
+battle_log_scroll = 0
 player_flash_timer = 0
 enemy_flash_timer = 0
 preview_scroll_offset = 0
@@ -74,6 +77,60 @@ def draw_text(text, x, y, color=(255, 255, 255), use_small=False):
     screen.blit(img, (x, y))
 
 
+def add_log(text):
+    global battle_log_scroll
+    battle_log.append(text)
+    if len(battle_log) > 200:
+        battle_log.pop(0)
+    battle_log_scroll = 0
+
+
+def perform_attack(attacker, defender):
+    before_hp = defender.health
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        attacker.attack(defender)
+    output = buf.getvalue()
+    damage = max(0, before_hp - defender.health)
+    return {
+        "damage": damage,
+        "crit": "CRITICAL HIT" in output,
+        "dodged": "DODGED" in output,
+    }
+
+
+def _effect_signature(character):
+    sig = []
+    for eff in getattr(character, "status_effects", []):
+        sig.append((str(eff.get("type", "?")), int(eff.get("duration", 0))))
+    sig.sort()
+    return sig
+
+
+def _effect_display(effect):
+    etype = str(effect.get("type", "?"))
+    duration = effect.get("duration", 0)
+    if duration < 0:
+        return f"{etype} (permanent)"
+    return f"{etype} ({duration}t)"
+
+
+def log_effect_changes(label, before_sig, character):
+    after_effects = getattr(character, "status_effects", [])
+    after_sig = _effect_signature(character)
+
+    if after_effects:
+        effects_text = ", ".join(_effect_display(eff) for eff in after_effects)
+        add_log(f"{label} afflicted: {effects_text}")
+    elif before_sig:
+        add_log(f"{label} has no active effects.")
+
+    removed = [entry for entry in before_sig if entry not in after_sig]
+    if removed:
+        removed_text = ", ".join(f"{etype}" for etype, _ in removed)
+        add_log(f"{label} recovered from: {removed_text}")
+
+
 def add_damage_popup(target_side, amount):
     if amount <= 0:
         return
@@ -82,6 +139,10 @@ def add_damage_popup(target_side, amount):
     damage_popups.append(
         {"text": f"-{int(amount)}", "x": x, "y": y, "color": (255, 90, 90), "ttl": 45}
     )
+
+
+def get_battle_log_panel_rect():
+    return pygame.Rect(40, 366, 820, 126)
 
 
 def draw_hp_bar(x, y, width, height, current_hp, max_hp, flash_timer):
@@ -99,21 +160,27 @@ def start_battle(builder):
     global player, enemy, game_state, message, player_turn_started
     player = builder()
     player.load()
-    ensure_min_health_potions(player, 3)
     player.reset_health()
     enemy = generate_enemy(player)
     game_state = "player_turn"
     player_turn_started = True
     message = f"You chose {player.name.title()}. Your turn!"
+    battle_log.clear()
+    add_log(f"Started run with {player.name.title()}.")
+    add_log(f"Enemy spawned: {enemy.name}.")
 
 
 def start_next_battle():
-    global enemy, game_state, message, player_turn_started
+    global enemy, game_state, message, player_turn_started, battle_log_scroll
     player.reset_health()
     enemy = generate_enemy(player)
     game_state = "player_turn"
     player_turn_started = True
     message = "A new enemy appears! Your turn."
+    battle_log.clear()
+    battle_log_scroll = 0
+    add_log("Moved to next battle.")
+    add_log(f"Enemy spawned: {enemy.name}.")
 
 
 def handle_battle_end():
@@ -131,14 +198,18 @@ def handle_battle_end():
             for item_name in dropped_items:
                 player.add_item(item_name, 1)
             message = f"Victory! +{xp_reward} XP, +{gold_reward} gold, {len(dropped_items)} drop(s)."
+            add_log(f"Victory! +{xp_reward} XP, +{gold_reward}g, {len(dropped_items)} drops.")
         else:
             message = f"Victory! +{xp_reward} XP, +{gold_reward} gold."
+            add_log(f"Victory! +{xp_reward} XP, +{gold_reward}g.")
 
         game_state = "shop"
         shop_index = 0
+        add_log("Entered shop.")
     else:
         message = "You were defeated! Press R to choose again."
         game_state = "battle_over"
+        add_log("Defeat.")
 
 
 def draw_shop_panel():
@@ -148,7 +219,13 @@ def draw_shop_panel():
     pygame.draw.rect(screen, (120, 120, 145), panel, width=2, border_radius=10)
 
     draw_text("Shop", panel.x + 14, panel.y + 12)
-    draw_text(f"Gold: {player.gold}", panel.x + 520, panel.y + 14, color=(245, 210, 120), use_small=True)
+    draw_text(
+        f"Gold: {player.gold}",
+        panel.x + 520,
+        panel.y + 14,
+        color=(245, 210, 120),
+        use_small=True,
+    )
 
     start = max(0, min(shop_index - 4, len(items) - 8))
     visible = items[start : start + 8]
@@ -169,8 +246,16 @@ def draw_shop_panel():
     pygame.draw.rect(screen, (108, 128, 170), preview, width=2, border_radius=8)
     draw_text(selected.name, preview.x + 10, preview.y + 10, use_small=True)
     draw_text(f"Type: {selected.type}", preview.x + 10, preview.y + 34, use_small=True)
-    draw_text(f"Rarity: {selected.rarity}", preview.x + 10, preview.y + 54, use_small=True)
-    draw_text(f"Price: {selected.price}g", preview.x + 10, preview.y + 74, color=(240, 200, 110), use_small=True)
+    draw_text(
+        f"Rarity: {selected.rarity}", preview.x + 10, preview.y + 54, use_small=True
+    )
+    draw_text(
+        f"Price: {selected.price}g",
+        preview.x + 10,
+        preview.y + 74,
+        color=(240, 200, 110),
+        use_small=True,
+    )
     y = preview.y + 98
     for line in wrap_small_text(selected.description, 244)[:7]:
         draw_text(line, preview.x + 10, y, color=(220, 220, 220), use_small=True)
@@ -195,10 +280,12 @@ def buy_selected_shop_item():
     item = ITEM_DATABASE[key]
     if player.gold < item.price:
         message = "Not enough gold."
+        add_log(f"Could not buy {item.name} (not enough gold).")
         return
     player.gold -= item.price
     player.add_item(key, 1)
     message = f"Bought {item.name}."
+    add_log(f"Bought {item.name} for {item.price}g.")
 
 
 def draw_hover_panel(character):
@@ -339,6 +426,9 @@ def build_preview_lines(item):
 
 def draw_item_preview(panel, item_name, scroll_offset):
     preview_rect = pygame.Rect(panel.x + 16, panel.y + 238, 420, 140)
+    content_rect = pygame.Rect(
+        preview_rect.x + 8, preview_rect.y + 54, preview_rect.width - 16, 78
+    )
     pygame.draw.rect(screen, (42, 46, 58), preview_rect, border_radius=10)
     pygame.draw.rect(screen, (118, 140, 178), preview_rect, width=2, border_radius=10)
 
@@ -350,7 +440,8 @@ def draw_item_preview(panel, item_name, scroll_offset):
             preview_rect.y + 10,
             use_small=True,
         )
-        return
+        pygame.draw.rect(screen, (35, 38, 48), content_rect, border_radius=6)
+        return content_rect, 0
 
     draw_text(
         "HOVER PREVIEW",
@@ -367,9 +458,6 @@ def draw_item_preview(panel, item_name, scroll_offset):
         use_small=True,
     )
 
-    content_rect = pygame.Rect(
-        preview_rect.x + 8, preview_rect.y + 54, preview_rect.width - 16, 78
-    )
     pygame.draw.rect(screen, (35, 38, 48), content_rect, border_radius=6)
 
     lines = build_preview_lines(item)
@@ -521,6 +609,17 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+        if event.type == pygame.MOUSEWHEEL and game_state != "choose_character":
+            mx, my = pygame.mouse.get_pos()
+            log_rect = get_battle_log_panel_rect()
+            if log_rect.collidepoint(mx, my):
+                visible_lines = 6
+                max_scroll = max(0, len(battle_log) - visible_lines)
+                battle_log_scroll = max(
+                    0, min(max_scroll, battle_log_scroll - event.y)
+                )
+                continue
+
         if game_state == "choose_character":
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mx, my = event.pos
@@ -533,18 +632,26 @@ while running:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     player.end_defend()
-                    enemy_before = enemy.health
-                    player.attack(enemy)
-                    damage = enemy_before - enemy.health
+                    result = perform_attack(player, enemy)
+                    damage = result["damage"]
                     if damage > 0:
                         enemy_flash_timer = 10
                         add_damage_popup("enemy", damage)
+                        if result["crit"]:
+                            add_log(f"CRIT! You hit {enemy.name} for {int(damage)}.")
+                        else:
+                            add_log(f"You hit {enemy.name} for {int(damage)}.")
+                    elif result["dodged"]:
+                        add_log(f"{enemy.name} dodged your attack.")
+                    else:
+                        add_log("You attacked.")
                     game_state = "enemy_turn"
                     player_turn_started = True
                     message = "You attacked."
                 elif event.key == pygame.K_2:
                     player.end_defend()
                     player.defend()
+                    add_log("You defended.")
                     game_state = "enemy_turn"
                     player_turn_started = True
                     message = "You defended."
@@ -559,23 +666,32 @@ while running:
                     player.save()
                     game_state = "battle_over"
                     message = "Game saved. Press R to choose again."
+                    add_log("Saved game.")
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mx, my = event.pos
                 battle_buttons = get_battle_action_buttons()
                 if battle_buttons["attack"].collidepoint(mx, my):
                     player.end_defend()
-                    enemy_before = enemy.health
-                    player.attack(enemy)
-                    damage = enemy_before - enemy.health
+                    result = perform_attack(player, enemy)
+                    damage = result["damage"]
                     if damage > 0:
                         enemy_flash_timer = 10
                         add_damage_popup("enemy", damage)
+                        if result["crit"]:
+                            add_log(f"CRIT! You hit {enemy.name} for {int(damage)}.")
+                        else:
+                            add_log(f"You hit {enemy.name} for {int(damage)}.")
+                    elif result["dodged"]:
+                        add_log(f"{enemy.name} dodged your attack.")
+                    else:
+                        add_log("You attacked.")
                     game_state = "enemy_turn"
                     player_turn_started = True
                     message = "You attacked."
                 elif battle_buttons["defend"].collidepoint(mx, my):
                     player.end_defend()
                     player.defend()
+                    add_log("You defended.")
                     game_state = "enemy_turn"
                     player_turn_started = True
                     message = "You defended."
@@ -590,6 +706,7 @@ while running:
                     player.save()
                     game_state = "battle_over"
                     message = "Game saved. Press R to choose again."
+                    add_log("Saved game.")
 
         elif game_state == "inventory_menu" and player and enemy:
             entries = get_inventory_entries(player)
@@ -691,6 +808,9 @@ while running:
                     message = "Inventory menu opened."
                 elif event.key in (pygame.K_q, pygame.K_ESCAPE):
                     start_next_battle()
+                    add_log("Left shop for next battle.")
+            elif event.type == pygame.MOUSEWHEEL and items:
+                shop_index = max(0, min(len(items) - 1, shop_index - event.y))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 _, row_rects, buy_btn, inv_btn, next_btn = draw_shop_panel()
                 for idx, row in row_rects:
@@ -706,6 +826,7 @@ while running:
                     message = "Inventory menu opened."
                 elif next_btn.collidepoint(event.pos):
                     start_next_battle()
+                    add_log("Left shop for next battle.")
 
         elif game_state == "battle_over":
             if event.type == pygame.KEYDOWN:
@@ -718,20 +839,31 @@ while running:
                     running = False
 
     if game_state == "player_turn" and player and enemy and player_turn_started:
+        player_effects_before = _effect_signature(player)
         player.process_status_effects()
+        log_effect_changes("You", player_effects_before, player)
         player_turn_started = False
         if not player.alive():
             handle_battle_end()
 
     if game_state == "enemy_turn" and player and enemy:
+        enemy_effects_before = _effect_signature(enemy)
         enemy.process_status_effects()
+        log_effect_changes("Enemy", enemy_effects_before, enemy)
         if enemy.alive() and player.alive():
-            player_before = player.health
-            enemy.attack(player)
-            damage = player_before - player.health
+            result = perform_attack(enemy, player)
+            damage = result["damage"]
             if damage > 0:
                 player_flash_timer = 10
                 add_damage_popup("player", damage)
+                if result["crit"]:
+                    add_log(f"CRIT! {enemy.name} hit you for {int(damage)}.")
+                else:
+                    add_log(f"{enemy.name} hit you for {int(damage)}.")
+            elif result["dodged"]:
+                add_log(f"You dodged {enemy.name}'s attack.")
+            else:
+                add_log(f"{enemy.name} attacked.")
         if not player.alive() or not enemy.alive():
             handle_battle_end()
         else:
@@ -779,8 +911,53 @@ while running:
         draw_text(f"Enemy: {enemy.name}", 560, 30)
         draw_text(f"Enemy HP: {int(enemy.health)}", 560, 70)
         draw_hp_bar(560, 95, 260, 18, enemy.health, enemy.max_health, enemy_flash_timer)
+        draw_text(
+            f"Enemy Weapon: {enemy.equipped_weapon or 'None'}",
+            560,
+            120,
+            use_small=True,
+        )
+        draw_text(
+            f"Enemy Armor: {enemy.equipped_armor or 'None'}",
+            560,
+            145,
+            use_small=True,
+        )
         if enemy.is_defending:
-            draw_text("Defending!", 560, 120, color=(140, 210, 255), use_small=True)
+            draw_text("Defending!", 560, 170, color=(140, 210, 255), use_small=True)
+
+        log_panel = get_battle_log_panel_rect()
+        pygame.draw.rect(screen, (30, 34, 44), log_panel, border_radius=10)
+        pygame.draw.rect(screen, (110, 128, 168), log_panel, width=2, border_radius=10)
+        draw_text("BATTLE LOG", log_panel.x + 10, log_panel.y + 8, color=(170, 210, 255), use_small=True)
+        visible_lines = 6
+        max_scroll = max(0, len(battle_log) - visible_lines)
+        battle_log_scroll = max(0, min(max_scroll, battle_log_scroll))
+        start_idx = max(0, len(battle_log) - visible_lines - battle_log_scroll)
+        visible_logs = battle_log[start_idx : start_idx + visible_lines]
+        for i, line in enumerate(visible_logs):
+            y = log_panel.y + 30 + (i * 16)
+            row = pygame.Rect(log_panel.x + 6, y - 1, log_panel.width - 12, 16)
+            if i % 2 == 0:
+                pygame.draw.rect(screen, (36, 40, 52), row, border_radius=4)
+            color = (220, 220, 220)
+            if "CRIT!" in line:
+                color = (255, 145, 125)
+            elif "dodged" in line.lower():
+                color = (170, 200, 245)
+            elif "afflicted" in line.lower():
+                color = (240, 215, 145)
+            elif "recovered" in line.lower():
+                color = (165, 235, 175)
+            draw_text(f"- {line}", log_panel.x + 10, y, color=color, use_small=True)
+        if max_scroll > 0:
+            draw_text(
+                "Scroll wheel over log to view older entries",
+                log_panel.right - 330,
+                log_panel.y + 8,
+                color=(160, 170, 190),
+                use_small=True,
+            )
 
         draw_text(message, 60, 500, use_small=True)
 

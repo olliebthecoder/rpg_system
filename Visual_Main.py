@@ -3,14 +3,15 @@ import pygame
 
 from enemy import generate_enemy
 from player import (
+    create_Cheat_Char,
     create_ninja,
     create_orc,
     create_queen,
     create_test_char,
     ensure_min_health_potions,
 )
-from main import finish_battle
 from Items import ITEM_DATABASE
+from loot.drops import roll_drops
 
 pygame.init()
 
@@ -27,6 +28,7 @@ CHARACTERS = [
     ("Orc", create_orc),
     ("Queen Carter", create_queen),
     ("Test Character", create_test_char),
+    ("Cheat Character", create_Cheat_Char),
 ]
 
 buttons = []
@@ -43,6 +45,8 @@ enemy = None
 game_state = "choose_character"
 message = "Choose your character to begin."
 inventory_index = 0
+shop_index = 0
+inventory_return_state = "player_turn"
 player_turn_started = False
 
 # Lightweight feedback effects
@@ -101,6 +105,100 @@ def start_battle(builder):
     game_state = "player_turn"
     player_turn_started = True
     message = f"You chose {player.name.title()}. Your turn!"
+
+
+def start_next_battle():
+    global enemy, game_state, message, player_turn_started
+    player.reset_health()
+    enemy = generate_enemy(player)
+    game_state = "player_turn"
+    player_turn_started = True
+    message = "A new enemy appears! Your turn."
+
+
+def handle_battle_end():
+    global game_state, message, shop_index
+    if player.alive() and not enemy.alive():
+        is_boss = "BOSS" in enemy.name.upper()
+        xp_reward = 200 if is_boss else 50
+        gold_reward = 100 if is_boss else 20
+        player.gain_xp(xp_reward)
+        player.gain_gold(gold_reward)
+
+        drops = getattr(enemy, "drops", [])
+        dropped_items = roll_drops(drops)
+        if dropped_items:
+            for item_name in dropped_items:
+                player.add_item(item_name, 1)
+            message = f"Victory! +{xp_reward} XP, +{gold_reward} gold, {len(dropped_items)} drop(s)."
+        else:
+            message = f"Victory! +{xp_reward} XP, +{gold_reward} gold."
+
+        game_state = "shop"
+        shop_index = 0
+    else:
+        message = "You were defeated! Press R to choose again."
+        game_state = "battle_over"
+
+
+def draw_shop_panel():
+    items = list(ITEM_DATABASE.keys())
+    panel = pygame.Rect(120, 110, 660, 370)
+    pygame.draw.rect(screen, (40, 40, 52), panel, border_radius=10)
+    pygame.draw.rect(screen, (120, 120, 145), panel, width=2, border_radius=10)
+
+    draw_text("Shop", panel.x + 14, panel.y + 12)
+    draw_text(f"Gold: {player.gold}", panel.x + 520, panel.y + 14, color=(245, 210, 120), use_small=True)
+
+    start = max(0, min(shop_index - 4, len(items) - 8))
+    visible = items[start : start + 8]
+    row_rects = []
+    for offset, key in enumerate(visible):
+        idx = start + offset
+        row = pygame.Rect(panel.x + 14, panel.y + 50 + offset * 32, 355, 26)
+        row_rects.append((idx, row))
+        if idx == shop_index:
+            pygame.draw.rect(screen, (76, 76, 126), row, border_radius=5)
+        item = ITEM_DATABASE[key]
+        draw_text(f"{item.name} ({item.price}g)", row.x + 8, row.y + 2, use_small=True)
+
+    selected_key = items[shop_index]
+    selected = ITEM_DATABASE[selected_key]
+    preview = pygame.Rect(panel.x + 382, panel.y + 50, 262, 250)
+    pygame.draw.rect(screen, (34, 38, 50), preview, border_radius=8)
+    pygame.draw.rect(screen, (108, 128, 170), preview, width=2, border_radius=8)
+    draw_text(selected.name, preview.x + 10, preview.y + 10, use_small=True)
+    draw_text(f"Type: {selected.type}", preview.x + 10, preview.y + 34, use_small=True)
+    draw_text(f"Rarity: {selected.rarity}", preview.x + 10, preview.y + 54, use_small=True)
+    draw_text(f"Price: {selected.price}g", preview.x + 10, preview.y + 74, color=(240, 200, 110), use_small=True)
+    y = preview.y + 98
+    for line in wrap_small_text(selected.description, 244)[:7]:
+        draw_text(line, preview.x + 10, y, color=(220, 220, 220), use_small=True)
+        y += 18
+
+    buy_btn = pygame.Rect(panel.x + 382, panel.y + 310, 262, 28)
+    next_btn = pygame.Rect(panel.x + 382, panel.y + 342, 262, 28)
+    inv_btn = pygame.Rect(panel.x + 14, panel.y + 342, 355, 28)
+    pygame.draw.rect(screen, (75, 130, 80), buy_btn, border_radius=6)
+    pygame.draw.rect(screen, (105, 90, 150), inv_btn, border_radius=6)
+    pygame.draw.rect(screen, (130, 80, 80), next_btn, border_radius=6)
+    draw_text("Buy Selected", buy_btn.x + 10, buy_btn.y + 4, use_small=True)
+    draw_text("Inventory", inv_btn.x + 10, inv_btn.y + 4, use_small=True)
+    draw_text("Next Battle", next_btn.x + 10, next_btn.y + 4, use_small=True)
+
+    return items, row_rects, buy_btn, inv_btn, next_btn
+
+
+def buy_selected_shop_item():
+    global message
+    key = list(ITEM_DATABASE.keys())[shop_index]
+    item = ITEM_DATABASE[key]
+    if player.gold < item.price:
+        message = "Not enough gold."
+        return
+    player.gold -= item.price
+    player.add_item(key, 1)
+    message = f"Bought {item.name}."
 
 
 def draw_hover_panel(character):
@@ -451,6 +549,7 @@ while running:
                     player_turn_started = True
                     message = "You defended."
                 elif event.key == pygame.K_3:
+                    inventory_return_state = "player_turn"
                     game_state = "inventory_menu"
                     inventory_index = 0
                     preview_item_key = None
@@ -481,6 +580,7 @@ while running:
                     player_turn_started = True
                     message = "You defended."
                 elif battle_buttons["inventory"].collidepoint(mx, my):
+                    inventory_return_state = "player_turn"
                     game_state = "inventory_menu"
                     inventory_index = 0
                     preview_item_key = None
@@ -495,8 +595,8 @@ while running:
             entries = get_inventory_entries(player)
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_q, pygame.K_ESCAPE):
-                    game_state = "player_turn"
-                    message = "Back to battle."
+                    game_state = inventory_return_state
+                    message = "Closed inventory."
                 elif event.key == pygame.K_DOWN and entries:
                     inventory_index = min(inventory_index + 1, len(entries) - 1)
                 elif event.key == pygame.K_UP and entries:
@@ -572,8 +672,40 @@ while running:
                         player.unequip_item("armor")
                         message = "Armor unequipped."
                     elif action_buttons["back"].collidepoint(mx, my):
-                        game_state = "player_turn"
-                        message = "Back to battle."
+                        game_state = inventory_return_state
+                        message = "Closed inventory."
+
+        elif game_state == "shop" and player:
+            items = list(ITEM_DATABASE.keys())
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN and items:
+                    shop_index = min(shop_index + 1, len(items) - 1)
+                elif event.key == pygame.K_UP and items:
+                    shop_index = max(shop_index - 1, 0)
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    buy_selected_shop_item()
+                elif event.key == pygame.K_i:
+                    inventory_return_state = "shop"
+                    game_state = "inventory_menu"
+                    inventory_index = 0
+                    message = "Inventory menu opened."
+                elif event.key in (pygame.K_q, pygame.K_ESCAPE):
+                    start_next_battle()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                _, row_rects, buy_btn, inv_btn, next_btn = draw_shop_panel()
+                for idx, row in row_rects:
+                    if row.collidepoint(event.pos):
+                        shop_index = idx
+                        break
+                if buy_btn.collidepoint(event.pos):
+                    buy_selected_shop_item()
+                elif inv_btn.collidepoint(event.pos):
+                    inventory_return_state = "shop"
+                    game_state = "inventory_menu"
+                    inventory_index = 0
+                    message = "Inventory menu opened."
+                elif next_btn.collidepoint(event.pos):
+                    start_next_battle()
 
         elif game_state == "battle_over":
             if event.type == pygame.KEYDOWN:
@@ -589,9 +721,7 @@ while running:
         player.process_status_effects()
         player_turn_started = False
         if not player.alive():
-            finish_battle(player, enemy)
-            game_state = "battle_over"
-            message = "You were defeated! Press R to choose again."
+            handle_battle_end()
 
     if game_state == "enemy_turn" and player and enemy:
         enemy.process_status_effects()
@@ -603,12 +733,7 @@ while running:
                 player_flash_timer = 10
                 add_damage_popup("player", damage)
         if not player.alive() or not enemy.alive():
-            finish_battle(player, enemy)
-            game_state = "battle_over"
-            if player.alive() and not enemy.alive():
-                message = "Enemy defeated! Press R to choose again."
-            else:
-                message = "You were defeated! Press R to choose again."
+            handle_battle_end()
         else:
             game_state = "player_turn"
             player_turn_started = True
@@ -681,6 +806,15 @@ while running:
             else:
                 inventory_index = 0
             draw_inventory_panel(player, inventory_index)
+
+        if game_state == "shop":
+            draw_shop_panel()
+            draw_text(
+                "Up/Down select  Enter buy  I inventory  Q next battle",
+                190,
+                540,
+                use_small=True,
+            )
 
         if game_state == "battle_over":
             draw_text("R = Character Select    Esc = Quit", 250, 540, use_small=True)

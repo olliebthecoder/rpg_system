@@ -56,6 +56,17 @@ def create_test_char():
     return _grant_starter_items(Character("test char", 100, 20, 35, 35, 35, 0))
 
 
+def create_Cheat_Char():
+    # 1000HP
+    # 100 attack power
+    # 100 speed
+    # 100 attack speed
+    # 100% defense
+    # 100% crit chance
+
+    return _grant_starter_items(Character("cheat char", 1000, 100, 100, 100, 100, 0))
+
+
 def choose_character():
     print("Welcome to the game.\n choose your character \n")
     print("1) Ninja")
@@ -67,6 +78,7 @@ def choose_character():
 
     if choice == "1":
         return create_ninja()
+
     elif choice == "2":
         return create_orc()
     elif choice == "3":

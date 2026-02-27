@@ -129,7 +129,7 @@ class Character:
             self.defense += 1
             # Keep base stats in sync so save/load doesn't drop level-up gains.
             self.base_attack_power += 5
-            self.base_defense += 1
+            self.base_defense += 0
             self.base_speed += 3
             self.base_attack_speed += 3
 
@@ -209,7 +209,8 @@ class Character:
                 "base_speed", saved_speed - speed_bonus_from_equipment
             )
             self.base_attack_speed = data.get(
-                "base_attack_speed", saved_attack_speed - attack_speed_bonus_from_equipment
+                "base_attack_speed",
+                saved_attack_speed - attack_speed_bonus_from_equipment,
             )
             self.attack_power = self.base_attack_power
             self.defense = self.base_defense

@@ -129,7 +129,7 @@ def generate_enemy(player):
     attack = base["attack"] + (player.level * 3)
     speed = base["speed"] + (player.level * 3)
     attack_speed = base["attack_speed"] + (player.level * 3)
-    defense = base["defense"] + (player.level * 2)
+    defense = base["defense"]
     crit_chance = base["crit_chance"]
 
     name = f"Level {level} {archetype_name}"

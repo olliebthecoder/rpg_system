@@ -3,7 +3,7 @@ import sys
 from contextlib import redirect_stdout
 import pygame
 
-from enemy import generate_enemy
+from enemy import generate_enemy, decide_enemy_action
 from player import (
     create_Cheat_Char,
     create_ninja,
@@ -1055,19 +1055,25 @@ while running:
             and (pygame.time.get_ticks() - enemy_turn_started_at)
             >= ENEMY_ATTACK_DELAY_MS
         ):
-            result = perform_attack(enemy, player)
-            damage = result["damage"]
-            if damage > 0:
-                player_flash_timer = 10
-                add_damage_popup("player", damage)
-                if result["crit"]:
-                    add_log(f"CRIT! {enemy.name} hit you for {int(damage)}.")
-                else:
-                    add_log(f"{enemy.name} hit you for {int(damage)}.")
-            elif result["dodged"]:
-                add_log(f"You dodged {enemy.name}'s attack.")
+            enemy.end_defend()
+            enemy_action = decide_enemy_action(enemy, player)
+            if enemy_action == "defend":
+                enemy.defend()
+                add_log(f"{enemy.name} defended.")
             else:
-                add_log(f"{enemy.name} attacked.")
+                result = perform_attack(enemy, player)
+                damage = result["damage"]
+                if damage > 0:
+                    player_flash_timer = 10
+                    add_damage_popup("player", damage)
+                    if result["crit"]:
+                        add_log(f"CRIT! {enemy.name} hit you for {int(damage)}.")
+                    else:
+                        add_log(f"{enemy.name} hit you for {int(damage)}.")
+                elif result["dodged"]:
+                    add_log(f"You dodged {enemy.name}'s attack.")
+                else:
+                    add_log(f"{enemy.name} attacked.")
 
             if not player.alive() or not enemy.alive():
                 handle_battle_end()
@@ -1116,6 +1122,10 @@ while running:
         draw_active_effects("Player", player.status_effects, 40, 196)
 
         draw_text(f"Enemy: {enemy.name}", 560, 30)
+        enemy_role = getattr(enemy, "archetype", "Unknown")
+        if getattr(enemy, "is_boss", False):
+            enemy_role = f"{enemy_role} (BOSS)"
+        draw_text(f"Type: {enemy_role}", 560, 52, color=(255, 210, 170), use_small=True)
         draw_text(f"Enemy HP: {int(enemy.health)}", 560, 70)
         draw_hp_bar(560, 95, 260, 18, enemy.health, enemy.max_health, enemy_flash_timer)
         draw_text(

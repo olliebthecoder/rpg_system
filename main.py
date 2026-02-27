@@ -1,6 +1,6 @@
 import random
 
-from enemy import generate_enemy
+from enemy import generate_enemy, decide_enemy_action
 from player import choose_character
 from Items import ITEM_DATABASE
 
@@ -84,7 +84,12 @@ def run_battle(player, enemy) -> None:
                 print(f"{enemy.name} is frozen and loses their turn!")
                 enemy.turn_skipped = False
             else:
-                enemy.attack(player)
+                enemy.end_defend()
+                enemy_action = decide_enemy_action(enemy, player)
+                if enemy_action == "defend":
+                    enemy.defend()
+                else:
+                    enemy.attack(player)
 
         if not player.alive() or not enemy.alive():
             break
@@ -109,7 +114,12 @@ def run_battle(player, enemy) -> None:
                 print(f"{enemy.name} is frozen and loses their turn!")
                 enemy.turn_skipped = False
             else:
-                enemy.attack(player)
+                enemy.end_defend()
+                enemy_action = decide_enemy_action(enemy, player)
+                if enemy_action == "defend":
+                    enemy.defend()
+                else:
+                    enemy.attack(player)
 
 
 def finish_battle(player, enemy) -> None:

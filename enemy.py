@@ -143,6 +143,8 @@ def generate_enemy(player):
         is_boss = True
 
     enemy = Character(name, health, attack, speed, attack_speed, defense, crit_chance)
+    enemy.archetype = archetype_name
+    enemy.is_boss = is_boss
 
     # Randomly equip gear based on level (higher levels = better/more likely gear).
     weapon_key = _choose_enemy_weapon(level, is_boss)
@@ -159,3 +161,47 @@ def generate_enemy(player):
     # Attach drops to enemy for use in finish_battle
     enemy.drops = get_enemy_drops(archetype_name, is_boss)
     return enemy
+
+
+def decide_enemy_action(enemy, player):
+    """Return 'attack' or 'defend' based on enemy archetype behavior."""
+    archetype = str(getattr(enemy, "archetype", "")).strip() or "Bruiser"
+    hp_ratio = 1.0 if enemy.max_health <= 0 else (enemy.health / enemy.max_health)
+    player_hp_ratio = (
+        1.0 if player.max_health <= 0 else (player.health / player.max_health)
+    )
+    player_low_hp = player_hp_ratio <= 0.35
+    already_defending = bool(getattr(enemy, "is_defending", False))
+    has_dot = any(
+        str(eff.get("type", "")).lower() in {"burn", "poison", "bleed"}
+        for eff in getattr(enemy, "status_effects", [])
+    )
+
+    if archetype == "Glass Cannon":
+        return "attack"
+
+    if archetype == "Assassin":
+        if player_low_hp:
+            return "attack"
+        defend_chance = 0.08
+        if already_defending:
+            defend_chance = 0.02
+        return "defend" if random.random() < defend_chance else "attack"
+
+    if archetype == "Tank":
+        defend_chance = 0.35
+        if hp_ratio < 0.5:
+            defend_chance = 0.65
+        if already_defending:
+            defend_chance = max(0.05, defend_chance - 0.30)
+        return "defend" if random.random() < defend_chance else "attack"
+
+    # Bruiser (default): mostly attacks, defend chance rises under DOT pressure.
+    defend_chance = 0.20
+    if has_dot:
+        defend_chance += 0.20
+    if hp_ratio < 0.35:
+        defend_chance += 0.10
+    if already_defending:
+        defend_chance = max(0.05, defend_chance - 0.15)
+    return "defend" if random.random() < min(0.75, defend_chance) else "attack"

@@ -115,6 +115,18 @@ def _effect_display(effect):
     return f"{etype} ({duration}t)"
 
 
+def draw_active_effects(label, effects, x, y):
+    draw_text(f"{label} Effects:", x, y, color=(255, 225, 150), use_small=True)
+    if not effects:
+        draw_text("None", x, y + 18, color=(165, 165, 165), use_small=True)
+        return
+
+    for i, eff in enumerate(effects[:4]):
+        draw_text(_effect_display(eff), x, y + 18 + (i * 16), color=(235, 235, 235), use_small=True)
+    if len(effects) > 4:
+        draw_text(f"+{len(effects) - 4} more", x, y + 18 + (4 * 16), color=(165, 165, 165), use_small=True)
+
+
 def log_effect_changes(label, before_sig, character):
     after_effects = getattr(character, "status_effects", [])
     after_sig = _effect_signature(character)
@@ -125,9 +137,12 @@ def log_effect_changes(label, before_sig, character):
     elif before_sig:
         add_log(f"{label} has no active effects.")
 
-    removed = [entry for entry in before_sig if entry not in after_sig]
-    if removed:
-        removed_text = ", ".join(f"{etype}" for etype, _ in removed)
+    # Only mark an effect as recovered when that effect type disappears entirely.
+    before_types = {etype for etype, _ in before_sig}
+    after_types = {etype for etype, _ in after_sig}
+    removed_types = sorted(before_types - after_types)
+    if removed_types:
+        removed_text = ", ".join(removed_types)
         add_log(f"{label} recovered from: {removed_text}")
 
 
@@ -154,6 +169,54 @@ def draw_hp_bar(x, y, width, height, current_hp, max_hp, flash_timer):
     pygame.draw.rect(
         screen, (200, 200, 200), (x, y, width, height), width=2, border_radius=6
     )
+
+
+def get_model_palette(name: str, is_enemy: bool = False):
+    n = (name or "").lower()
+    skin = (228, 186, 148)
+    outfit = (85, 125, 210)
+    legs = (48, 56, 72)
+
+    if "ninja" in n:
+        outfit, legs = (45, 45, 55), (28, 28, 36)
+    elif "orc" in n:
+        skin, outfit, legs = (108, 164, 94), (95, 70, 55), (55, 40, 32)
+    elif "queen" in n:
+        outfit, legs = (170, 75, 135), (96, 55, 96)
+    elif "test" in n:
+        outfit, legs = (60, 140, 150), (40, 82, 90)
+    elif "cheat" in n:
+        outfit, legs = (210, 125, 50), (95, 55, 25)
+    elif "tank" in n:
+        outfit, legs = (95, 105, 118), (55, 65, 78)
+    elif "assassin" in n:
+        outfit, legs = (65, 50, 85), (42, 34, 58)
+    elif "bruiser" in n:
+        outfit, legs = (130, 95, 65), (78, 56, 38)
+    elif "glass cannon" in n:
+        outfit, legs = (170, 70, 70), (88, 45, 45)
+
+    if is_enemy:
+        # Shift enemy models slightly warmer/darker to distinguish sides.
+        outfit = tuple(max(0, min(255, c - 18)) for c in outfit)
+        legs = tuple(max(0, min(255, c - 14)) for c in legs)
+
+    return {"skin": skin, "outfit": outfit, "legs": legs}
+
+
+def draw_character_model(x: int, y: int, palette: dict):
+    # Shadow
+    pygame.draw.ellipse(screen, (18, 18, 24), (x - 24, y + 96, 48, 12))
+    # Head
+    pygame.draw.circle(screen, palette["skin"], (x, y), 16)
+    # Torso
+    pygame.draw.rect(screen, palette["outfit"], (x - 15, y + 18, 30, 42), border_radius=7)
+    # Arms
+    pygame.draw.rect(screen, palette["skin"], (x - 27, y + 22, 10, 28), border_radius=4)
+    pygame.draw.rect(screen, palette["skin"], (x + 17, y + 22, 10, 28), border_radius=4)
+    # Legs
+    pygame.draw.rect(screen, palette["legs"], (x - 12, y + 60, 10, 34), border_radius=4)
+    pygame.draw.rect(screen, palette["legs"], (x + 2, y + 60, 10, 34), border_radius=4)
 
 
 def start_battle(builder):
@@ -198,7 +261,9 @@ def handle_battle_end():
             for item_name in dropped_items:
                 player.add_item(item_name, 1)
             message = f"Victory! +{xp_reward} XP, +{gold_reward} gold, {len(dropped_items)} drop(s)."
-            add_log(f"Victory! +{xp_reward} XP, +{gold_reward}g, {len(dropped_items)} drops.")
+            add_log(
+                f"Victory! +{xp_reward} XP, +{gold_reward}g, {len(dropped_items)} drops."
+            )
         else:
             message = f"Victory! +{xp_reward} XP, +{gold_reward} gold."
             add_log(f"Victory! +{xp_reward} XP, +{gold_reward}g.")
@@ -213,6 +278,14 @@ def handle_battle_end():
 
 
 def draw_shop_panel():
+    rarity_glow = {
+        "Common": (190, 190, 190),
+        "Uncommon": (90, 210, 120),
+        "Rare": (90, 140, 255),
+        "Epic": (210, 110, 255),
+        "Legendary": (255, 190, 70),
+        "Mythic": (255, 80, 80),
+    }
     items = list(ITEM_DATABASE.keys())
     panel = pygame.Rect(120, 110, 660, 370)
     pygame.draw.rect(screen, (40, 40, 52), panel, border_radius=10)
@@ -234,15 +307,24 @@ def draw_shop_panel():
         idx = start + offset
         row = pygame.Rect(panel.x + 14, panel.y + 50 + offset * 32, 355, 26)
         row_rects.append((idx, row))
+        item = ITEM_DATABASE[key]
+        glow = rarity_glow.get(item.rarity, (180, 180, 180))
+        # soft rarity glow border
+        pygame.draw.rect(screen, glow, row.inflate(2, 2), width=2, border_radius=6)
         if idx == shop_index:
             pygame.draw.rect(screen, (76, 76, 126), row, border_radius=5)
-        item = ITEM_DATABASE[key]
+        else:
+            pygame.draw.rect(screen, (48, 52, 66), row, border_radius=5)
         draw_text(f"{item.name} ({item.price}g)", row.x + 8, row.y + 2, use_small=True)
 
     selected_key = items[shop_index]
     selected = ITEM_DATABASE[selected_key]
     preview = pygame.Rect(panel.x + 382, panel.y + 50, 262, 250)
     pygame.draw.rect(screen, (34, 38, 50), preview, border_radius=8)
+    selected_glow = rarity_glow.get(selected.rarity, (180, 180, 180))
+    # layered border to make the rarity glow more visible
+    pygame.draw.rect(screen, selected_glow, preview.inflate(10, 10), width=2, border_radius=12)
+    pygame.draw.rect(screen, selected_glow, preview.inflate(4, 4), width=2, border_radius=10)
     pygame.draw.rect(screen, (108, 128, 170), preview, width=2, border_radius=8)
     draw_text(selected.name, preview.x + 10, preview.y + 10, use_small=True)
     draw_text(f"Type: {selected.type}", preview.x + 10, preview.y + 34, use_small=True)
@@ -524,6 +606,14 @@ def build_inventory_ui(character, selected_index):
 
 def draw_inventory_panel(character, selected_index):
     global preview_scroll_offset, preview_max_scroll, preview_item_key, preview_scroll_rect
+    rarity_glow = {
+        "Common": (190, 190, 190),
+        "Uncommon": (90, 210, 120),
+        "Rare": (90, 140, 255),
+        "Epic": (210, 110, 255),
+        "Legendary": (255, 190, 70),
+        "Mythic": (255, 80, 80),
+    }
     ui = build_inventory_ui(character, selected_index)
     panel = ui["panel"]
     entries = ui["entries"]
@@ -555,14 +645,18 @@ def draw_inventory_panel(character, selected_index):
     else:
         for i, row_rect, item_name, qty in row_rects:
             is_hovered = row_rect.collidepoint(mouse_pos)
+            _, item = resolve_item_data(item_name)
+            glow = rarity_glow.get(item.rarity, (180, 180, 180)) if item else (180, 180, 180)
+            pygame.draw.rect(screen, glow, row_rect.inflate(2, 2), width=2, border_radius=6)
             if i == selected_index:
                 pygame.draw.rect(screen, (80, 80, 130), row_rect, border_radius=6)
             elif is_hovered:
                 pygame.draw.rect(screen, (65, 65, 85), row_rect, border_radius=6)
+            else:
+                pygame.draw.rect(screen, (48, 52, 66), row_rect, border_radius=6)
             if is_hovered:
                 hovered_item_name = item_name
 
-            _, item = resolve_item_data(item_name)
             item_type = item.type if item else "unknown"
             draw_text(
                 f"{item_name} x{qty} [{item_type}]",
@@ -615,9 +709,7 @@ while running:
             if log_rect.collidepoint(mx, my):
                 visible_lines = 6
                 max_scroll = max(0, len(battle_log) - visible_lines)
-                battle_log_scroll = max(
-                    0, min(max_scroll, battle_log_scroll - event.y)
-                )
+                battle_log_scroll = max(0, min(max_scroll, battle_log_scroll - event.y))
                 continue
 
         if game_state == "choose_character":
@@ -739,13 +831,6 @@ while running:
                 elif event.key == pygame.K_a:
                     player.unequip_item("armor")
                     message = "Armor unequipped."
-            elif event.type == pygame.MOUSEMOTION:
-                mx, my = event.pos
-                ui = build_inventory_ui(player, inventory_index)
-                for idx, row_rect, _, _ in ui["row_rects"]:
-                    if row_rect.collidepoint(mx, my):
-                        inventory_index = idx
-                        break
             elif event.type == pygame.MOUSEWHEEL:
                 mx, my = pygame.mouse.get_pos()
                 if preview_scroll_rect.collidepoint(mx, my):
@@ -907,6 +992,7 @@ while running:
         draw_text(f"Armor: {player.equipped_armor or 'None'}", 40, 145, use_small=True)
         if player.is_defending:
             draw_text("Defending!", 40, 170, color=(140, 210, 255), use_small=True)
+        draw_active_effects("Player", player.status_effects, 40, 196)
 
         draw_text(f"Enemy: {enemy.name}", 560, 30)
         draw_text(f"Enemy HP: {int(enemy.health)}", 560, 70)
@@ -925,11 +1011,22 @@ while running:
         )
         if enemy.is_defending:
             draw_text("Defending!", 560, 170, color=(140, 210, 255), use_small=True)
+        draw_active_effects("Enemy", enemy.status_effects, 560, 196)
+
+        # Placeholder battle models (player/enemy).
+        draw_character_model(220, 225, get_model_palette(player.name, is_enemy=False))
+        draw_character_model(680, 225, get_model_palette(enemy.name, is_enemy=True))
 
         log_panel = get_battle_log_panel_rect()
         pygame.draw.rect(screen, (30, 34, 44), log_panel, border_radius=10)
         pygame.draw.rect(screen, (110, 128, 168), log_panel, width=2, border_radius=10)
-        draw_text("BATTLE LOG", log_panel.x + 10, log_panel.y + 8, color=(170, 210, 255), use_small=True)
+        draw_text(
+            "BATTLE LOG",
+            log_panel.x + 10,
+            log_panel.y + 8,
+            color=(170, 210, 255),
+            use_small=True,
+        )
         visible_lines = 6
         max_scroll = max(0, len(battle_log) - visible_lines)
         battle_log_scroll = max(0, min(max_scroll, battle_log_scroll))

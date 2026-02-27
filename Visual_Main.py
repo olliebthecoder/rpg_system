@@ -49,6 +49,10 @@ inventory_index = 0
 shop_index = 0
 inventory_return_state = "player_turn"
 player_turn_started = False
+player_action_used = False
+enemy_turn_started_at = None
+enemy_turn_status_processed = False
+ENEMY_ATTACK_DELAY_MS = 700
 
 # Lightweight feedback effects
 damage_popups = []
@@ -68,7 +72,16 @@ def get_battle_action_buttons():
         "defend": pygame.Rect(360, 534, 130, 34),
         "inventory": pygame.Rect(500, 534, 130, 34),
         "save": pygame.Rect(640, 534, 130, 34),
+        "end_turn": pygame.Rect(780, 534, 100, 34),
     }
+
+
+def begin_enemy_turn():
+    global game_state, enemy_turn_started_at, enemy_turn_status_processed, message
+    game_state = "enemy_turn"
+    enemy_turn_started_at = pygame.time.get_ticks()
+    enemy_turn_status_processed = False
+    message = "Enemy is preparing an action..."
 
 
 def draw_text(text, x, y, color=(255, 255, 255), use_small=False):
@@ -122,9 +135,21 @@ def draw_active_effects(label, effects, x, y):
         return
 
     for i, eff in enumerate(effects[:4]):
-        draw_text(_effect_display(eff), x, y + 18 + (i * 16), color=(235, 235, 235), use_small=True)
+        draw_text(
+            _effect_display(eff),
+            x,
+            y + 18 + (i * 16),
+            color=(235, 235, 235),
+            use_small=True,
+        )
     if len(effects) > 4:
-        draw_text(f"+{len(effects) - 4} more", x, y + 18 + (4 * 16), color=(165, 165, 165), use_small=True)
+        draw_text(
+            f"+{len(effects) - 4} more",
+            x,
+            y + 18 + (4 * 16),
+            color=(165, 165, 165),
+            use_small=True,
+        )
 
 
 def log_effect_changes(label, before_sig, character):
@@ -210,7 +235,9 @@ def draw_character_model(x: int, y: int, palette: dict):
     # Head
     pygame.draw.circle(screen, palette["skin"], (x, y), 16)
     # Torso
-    pygame.draw.rect(screen, palette["outfit"], (x - 15, y + 18, 30, 42), border_radius=7)
+    pygame.draw.rect(
+        screen, palette["outfit"], (x - 15, y + 18, 30, 42), border_radius=7
+    )
     # Arms
     pygame.draw.rect(screen, palette["skin"], (x - 27, y + 22, 10, 28), border_radius=4)
     pygame.draw.rect(screen, palette["skin"], (x + 17, y + 22, 10, 28), border_radius=4)
@@ -220,13 +247,14 @@ def draw_character_model(x: int, y: int, palette: dict):
 
 
 def start_battle(builder):
-    global player, enemy, game_state, message, player_turn_started
+    global player, enemy, game_state, message, player_turn_started, player_action_used
     player = builder()
     player.load()
     player.reset_health()
     enemy = generate_enemy(player)
     game_state = "player_turn"
     player_turn_started = True
+    player_action_used = False
     message = f"You chose {player.name.title()}. Your turn!"
     battle_log.clear()
     add_log(f"Started run with {player.name.title()}.")
@@ -234,11 +262,12 @@ def start_battle(builder):
 
 
 def start_next_battle():
-    global enemy, game_state, message, player_turn_started, battle_log_scroll
+    global enemy, game_state, message, player_turn_started, battle_log_scroll, player_action_used
     player.reset_health()
     enemy = generate_enemy(player)
     game_state = "player_turn"
     player_turn_started = True
+    player_action_used = False
     message = "A new enemy appears! Your turn."
     battle_log.clear()
     battle_log_scroll = 0
@@ -323,8 +352,12 @@ def draw_shop_panel():
     pygame.draw.rect(screen, (34, 38, 50), preview, border_radius=8)
     selected_glow = rarity_glow.get(selected.rarity, (180, 180, 180))
     # layered border to make the rarity glow more visible
-    pygame.draw.rect(screen, selected_glow, preview.inflate(10, 10), width=2, border_radius=12)
-    pygame.draw.rect(screen, selected_glow, preview.inflate(4, 4), width=2, border_radius=10)
+    pygame.draw.rect(
+        screen, selected_glow, preview.inflate(10, 10), width=2, border_radius=12
+    )
+    pygame.draw.rect(
+        screen, selected_glow, preview.inflate(4, 4), width=2, border_radius=10
+    )
     pygame.draw.rect(screen, (108, 128, 170), preview, width=2, border_radius=8)
     draw_text(selected.name, preview.x + 10, preview.y + 10, use_small=True)
     draw_text(f"Type: {selected.type}", preview.x + 10, preview.y + 34, use_small=True)
@@ -470,13 +503,51 @@ def pretty_key(name):
     return aliases.get(key, key)
 
 
-def build_preview_lines(item):
+def _equipped_item_for_preview(character, item_type):
+    if not character:
+        return None
+    equipped_name = None
+    if item_type == "weapon":
+        equipped_name = character.equipped_weapon
+    elif item_type == "armor":
+        equipped_name = character.equipped_armor
+    if not equipped_name:
+        return None
+    _, equipped_item = resolve_item_data(equipped_name)
+    return equipped_item
+
+
+def build_preview_lines(item, character=None):
     lines = []
     lines.append(("STATS", (130, 200, 255)))
+    equipped_item = _equipped_item_for_preview(character, item.type)
+    if equipped_item:
+        lines.append((f"Comparing vs: {equipped_item.name}", (165, 180, 220)))
     if item.bonuses:
         for stat, val in item.bonuses.items():
             stat_name = stat.replace("_", " ").title()
-            lines.append((f"{stat_name}: {plus_value(val)}", (210, 230, 255)))
+            line_color = (210, 230, 255)
+            compare_text = ""
+            equipped_bonus = 0
+            if (
+                equipped_item
+                and isinstance(val, (int, float))
+                and isinstance(equipped_item.bonuses, dict)
+            ):
+                eq_val = equipped_item.bonuses.get(stat, 0)
+                if isinstance(eq_val, (int, float)):
+                    equipped_bonus = eq_val
+                diff = val - equipped_bonus
+                if diff > 0:
+                    line_color = (130, 240, 150)
+                    compare_text = f" ({plus_value(diff)})"
+                elif diff < 0:
+                    line_color = (255, 150, 150)
+                    compare_text = f" ({plus_value(diff)})"
+                else:
+                    line_color = (205, 205, 205)
+                    compare_text = " (same)"
+            lines.append((f"{stat_name}: {plus_value(val)}{compare_text}", line_color))
     else:
         lines.append(("No stat bonuses", (170, 170, 170)))
 
@@ -506,7 +577,7 @@ def build_preview_lines(item):
     return lines
 
 
-def draw_item_preview(panel, item_name, scroll_offset):
+def draw_item_preview(panel, item_name, scroll_offset, character=None):
     preview_rect = pygame.Rect(panel.x + 16, panel.y + 238, 420, 140)
     content_rect = pygame.Rect(
         preview_rect.x + 8, preview_rect.y + 54, preview_rect.width - 16, 78
@@ -542,7 +613,7 @@ def draw_item_preview(panel, item_name, scroll_offset):
 
     pygame.draw.rect(screen, (35, 38, 48), content_rect, border_radius=6)
 
-    lines = build_preview_lines(item)
+    lines = build_preview_lines(item, character)
     line_height = 18
     visible_lines = max(1, content_rect.height // line_height)
     max_scroll = max(0, len(lines) - visible_lines)
@@ -646,8 +717,14 @@ def draw_inventory_panel(character, selected_index):
         for i, row_rect, item_name, qty in row_rects:
             is_hovered = row_rect.collidepoint(mouse_pos)
             _, item = resolve_item_data(item_name)
-            glow = rarity_glow.get(item.rarity, (180, 180, 180)) if item else (180, 180, 180)
-            pygame.draw.rect(screen, glow, row_rect.inflate(2, 2), width=2, border_radius=6)
+            glow = (
+                rarity_glow.get(item.rarity, (180, 180, 180))
+                if item
+                else (180, 180, 180)
+            )
+            pygame.draw.rect(
+                screen, glow, row_rect.inflate(2, 2), width=2, border_radius=6
+            )
             if i == selected_index:
                 pygame.draw.rect(screen, (80, 80, 130), row_rect, border_radius=6)
             elif is_hovered:
@@ -670,7 +747,7 @@ def draw_inventory_panel(character, selected_index):
             preview_item_key = preview_name
             preview_scroll_offset = 0
         preview_scroll_rect, preview_max_scroll = draw_item_preview(
-            panel, preview_name, preview_scroll_offset
+            panel, preview_name, preview_scroll_offset, character
         )
 
     for key, rect in action_buttons.items():
@@ -723,30 +800,36 @@ while running:
         elif game_state == "player_turn" and player and enemy:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    player.end_defend()
-                    result = perform_attack(player, enemy)
-                    damage = result["damage"]
-                    if damage > 0:
-                        enemy_flash_timer = 10
-                        add_damage_popup("enemy", damage)
-                        if result["crit"]:
-                            add_log(f"CRIT! You hit {enemy.name} for {int(damage)}.")
-                        else:
-                            add_log(f"You hit {enemy.name} for {int(damage)}.")
-                    elif result["dodged"]:
-                        add_log(f"{enemy.name} dodged your attack.")
+                    if player_action_used:
+                        message = "You already used your action. End turn when ready."
                     else:
-                        add_log("You attacked.")
-                    game_state = "enemy_turn"
-                    player_turn_started = True
-                    message = "You attacked."
+                        player.end_defend()
+                        result = perform_attack(player, enemy)
+                        damage = result["damage"]
+                        if damage > 0:
+                            enemy_flash_timer = 10
+                            add_damage_popup("enemy", damage)
+                            if result["crit"]:
+                                add_log(
+                                    f"CRIT! You hit {enemy.name} for {int(damage)}."
+                                )
+                            else:
+                                add_log(f"You hit {enemy.name} for {int(damage)}.")
+                        elif result["dodged"]:
+                            add_log(f"{enemy.name} dodged your attack.")
+                        else:
+                            add_log("You attacked.")
+                        player_action_used = True
+                        message = "Action used. End turn when ready."
                 elif event.key == pygame.K_2:
-                    player.end_defend()
-                    player.defend()
-                    add_log("You defended.")
-                    game_state = "enemy_turn"
-                    player_turn_started = True
-                    message = "You defended."
+                    if player_action_used:
+                        message = "You already used your action. End turn when ready."
+                    else:
+                        player.end_defend()
+                        player.defend()
+                        add_log("You defended.")
+                        player_action_used = True
+                        message = "Action used. End turn when ready."
                 elif event.key == pygame.K_3:
                     inventory_return_state = "player_turn"
                     game_state = "inventory_menu"
@@ -754,6 +837,10 @@ while running:
                     preview_item_key = None
                     preview_scroll_offset = 0
                     message = "Inventory menu opened."
+                elif event.key == pygame.K_4:
+                    begin_enemy_turn()
+                    message = "You ended your turn."
+                    add_log("You ended your turn.")
                 elif event.key == pygame.K_5:
                     player.save()
                     game_state = "battle_over"
@@ -763,30 +850,36 @@ while running:
                 mx, my = event.pos
                 battle_buttons = get_battle_action_buttons()
                 if battle_buttons["attack"].collidepoint(mx, my):
-                    player.end_defend()
-                    result = perform_attack(player, enemy)
-                    damage = result["damage"]
-                    if damage > 0:
-                        enemy_flash_timer = 10
-                        add_damage_popup("enemy", damage)
-                        if result["crit"]:
-                            add_log(f"CRIT! You hit {enemy.name} for {int(damage)}.")
-                        else:
-                            add_log(f"You hit {enemy.name} for {int(damage)}.")
-                    elif result["dodged"]:
-                        add_log(f"{enemy.name} dodged your attack.")
+                    if player_action_used:
+                        message = "You already used your action. End turn when ready."
                     else:
-                        add_log("You attacked.")
-                    game_state = "enemy_turn"
-                    player_turn_started = True
-                    message = "You attacked."
+                        player.end_defend()
+                        result = perform_attack(player, enemy)
+                        damage = result["damage"]
+                        if damage > 0:
+                            enemy_flash_timer = 10
+                            add_damage_popup("enemy", damage)
+                            if result["crit"]:
+                                add_log(
+                                    f"CRIT! You hit {enemy.name} for {int(damage)}."
+                                )
+                            else:
+                                add_log(f"You hit {enemy.name} for {int(damage)}.")
+                        elif result["dodged"]:
+                            add_log(f"{enemy.name} dodged your attack.")
+                        else:
+                            add_log("You attacked.")
+                        player_action_used = True
+                        message = "Action used. End turn when ready."
                 elif battle_buttons["defend"].collidepoint(mx, my):
-                    player.end_defend()
-                    player.defend()
-                    add_log("You defended.")
-                    game_state = "enemy_turn"
-                    player_turn_started = True
-                    message = "You defended."
+                    if player_action_used:
+                        message = "You already used your action. End turn when ready."
+                    else:
+                        player.end_defend()
+                        player.defend()
+                        add_log("You defended.")
+                        player_action_used = True
+                        message = "Action used. End turn when ready."
                 elif battle_buttons["inventory"].collidepoint(mx, my):
                     inventory_return_state = "player_turn"
                     game_state = "inventory_menu"
@@ -799,6 +892,10 @@ while running:
                     game_state = "battle_over"
                     message = "Game saved. Press R to choose again."
                     add_log("Saved game.")
+                elif battle_buttons["end_turn"].collidepoint(mx, my):
+                    begin_enemy_turn()
+                    message = "You ended your turn."
+                    add_log("You ended your turn.")
 
         elif game_state == "inventory_menu" and player and enemy:
             entries = get_inventory_entries(player)
@@ -814,11 +911,16 @@ while running:
                     selected_item = entries[inventory_index][0]
                     _, item = resolve_item_data(selected_item)
                     if item and item.type == "consumable":
-                        player.end_defend()
-                        player.use_item(selected_item)
-                        game_state = "enemy_turn"
-                        player_turn_started = True
-                        message = f"Used {selected_item}."
+                        if player_action_used:
+                            message = (
+                                "You already used your action. End turn when ready."
+                            )
+                        else:
+                            player.end_defend()
+                            player.use_item(selected_item)
+                            player_action_used = True
+                            message = f"Used {selected_item}. End turn when ready."
+                            add_log(f"Used {selected_item}.")
                     else:
                         message = "Selected item is not a consumable."
                 elif event.key == pygame.K_e and entries:
@@ -855,11 +957,16 @@ while running:
                             selected_item = entries[inventory_index][0]
                             _, item = resolve_item_data(selected_item)
                             if item and item.type == "consumable":
-                                player.end_defend()
-                                player.use_item(selected_item)
-                                game_state = "enemy_turn"
-                                player_turn_started = True
-                                message = f"Used {selected_item}."
+                                if player_action_used:
+                                    message = "You already used your action. End turn when ready."
+                                else:
+                                    player.end_defend()
+                                    player.use_item(selected_item)
+                                    player_action_used = True
+                                    message = (
+                                        f"Used {selected_item}. End turn when ready."
+                                    )
+                                    add_log(f"Used {selected_item}.")
                             else:
                                 message = "Selected item is not a consumable."
                     elif action_buttons["equip"].collidepoint(mx, my):
@@ -932,10 +1039,22 @@ while running:
             handle_battle_end()
 
     if game_state == "enemy_turn" and player and enemy:
-        enemy_effects_before = _effect_signature(enemy)
-        enemy.process_status_effects()
-        log_effect_changes("Enemy", enemy_effects_before, enemy)
-        if enemy.alive() and player.alive():
+        if not enemy_turn_status_processed:
+            enemy_effects_before = _effect_signature(enemy)
+            enemy.process_status_effects()
+            log_effect_changes("Enemy", enemy_effects_before, enemy)
+            enemy_turn_status_processed = True
+            if not enemy.alive() or not player.alive():
+                handle_battle_end()
+
+        if (
+            game_state == "enemy_turn"
+            and enemy.alive()
+            and player.alive()
+            and enemy_turn_started_at is not None
+            and (pygame.time.get_ticks() - enemy_turn_started_at)
+            >= ENEMY_ATTACK_DELAY_MS
+        ):
             result = perform_attack(enemy, player)
             damage = result["damage"]
             if damage > 0:
@@ -949,12 +1068,14 @@ while running:
                 add_log(f"You dodged {enemy.name}'s attack.")
             else:
                 add_log(f"{enemy.name} attacked.")
-        if not player.alive() or not enemy.alive():
-            handle_battle_end()
-        else:
-            game_state = "player_turn"
-            player_turn_started = True
-            message = "Your turn."
+
+            if not player.alive() or not enemy.alive():
+                handle_battle_end()
+            else:
+                game_state = "player_turn"
+                player_turn_started = True
+                player_action_used = False
+                message = "Your turn."
 
     screen.fill((30, 30, 30))
 
@@ -1011,6 +1132,19 @@ while running:
         )
         if enemy.is_defending:
             draw_text("Defending!", 560, 170, color=(140, 210, 255), use_small=True)
+
+        # Turn banner
+        if game_state in {"player_turn", "enemy_turn"}:
+            banner = pygame.Rect(355, 8, 190, 28)
+            pygame.draw.rect(screen, (45, 52, 70), banner, border_radius=8)
+            pygame.draw.rect(screen, (120, 145, 190), banner, width=2, border_radius=8)
+            turn_text = "YOUR TURN" if game_state == "player_turn" else "ENEMY TURN"
+            turn_color = (
+                (170, 220, 255) if game_state == "player_turn" else (255, 190, 170)
+            )
+            draw_text(
+                turn_text, banner.x + 22, banner.y + 4, color=turn_color, use_small=True
+            )
         draw_active_effects("Enemy", enemy.status_effects, 560, 196)
 
         # Placeholder battle models (player/enemy).
@@ -1066,6 +1200,7 @@ while running:
                 "defend": "Defend",
                 "inventory": "Inventory",
                 "save": "Save",
+                "end_turn": "End Turn",
             }
             for key, rect in battle_buttons.items():
                 hovered = rect.collidepoint(mouse_pos)

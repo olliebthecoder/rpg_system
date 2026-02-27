@@ -7,6 +7,23 @@ from Items import ITEM_DATABASE
 SAVE_DIR = "player files"
 
 
+def _normalize_item_key(name: str) -> str:
+    return " ".join(str(name or "").replace("_", " ").strip().lower().split())
+
+
+def resolve_item_key(name: str):
+    """Return canonical ITEM_DATABASE key for a user/save-provided item name."""
+    if not name:
+        return None
+    if name in ITEM_DATABASE:
+        return name
+    target = _normalize_item_key(name)
+    for key in ITEM_DATABASE.keys():
+        if _normalize_item_key(key) == target:
+            return key
+    return None
+
+
 class Character:
     def __init__(
         self,
@@ -149,9 +166,19 @@ class Character:
             self.attack_speed = data.get("attack_speed", self.attack_speed)
             self.defense = data.get("defense", self.defense)
             self.gold = data.get("gold", self.gold)
-            self.inventory = data.get("inventory", self.inventory)
-            self.equipped_weapon = data.get("equipped_weapon", self.equipped_weapon)
-            self.equipped_armor = data.get("equipped_armor", self.equipped_armor)
+            loaded_inventory = data.get("inventory", self.inventory)
+            # Canonicalize saved inventory keys to current ITEM_DATABASE keys.
+            canonical_inventory = {}
+            for raw_key, qty in loaded_inventory.items():
+                key = resolve_item_key(raw_key) or raw_key
+                canonical_inventory[key] = canonical_inventory.get(key, 0) + qty
+            self.inventory = canonical_inventory
+            self.equipped_weapon = resolve_item_key(
+                data.get("equipped_weapon", self.equipped_weapon)
+            )
+            self.equipped_armor = resolve_item_key(
+                data.get("equipped_armor", self.equipped_armor)
+            )
             self.crit_chance = data.get("crit_chance", self.crit_chance)
 
             # Reset stats to base values from save file before applying equipment bonuses
@@ -210,12 +237,12 @@ class Character:
         print(f"{self.name} healed for {heal} HP! (HP: {self.health})")
 
     def add_item(self, item_name: str, qty: int = 1):
-        key = item_name.title()
+        key = resolve_item_key(item_name) or item_name.title()
         self.inventory[key] = self.inventory.get(key, 0) + qty
         print(f"{self.name} received {qty} x {key} (Total: {self.inventory[key]})")
 
     def remove_item(self, item_name: str, qty: int = 1) -> bool:
-        key = item_name.title()
+        key = resolve_item_key(item_name) or item_name.title()
         count = self.inventory.get(key, 0)
         if count < qty:
             return False
@@ -227,19 +254,14 @@ class Character:
 
     def use_item(self, item_name: str) -> None:
         name = item_name.strip()
-        inventory_key = name.title()
+        inventory_key = resolve_item_key(name) or name.title()
 
         if self.inventory.get(inventory_key, 0) <= 0:
             print(f"No {inventory_key} in inventory.")
             return
 
-        # Try tolerant lookups in ITEM_DATABASE: Title Case, lowercase, underscore form
-        candidates = [inventory_key, name, name.lower(), name.lower().replace(" ", "_")]
-        item_data = None
-        for cand in candidates:
-            if cand in ITEM_DATABASE:
-                item_data = ITEM_DATABASE[cand]
-                break
+        item_db_key = resolve_item_key(name) or resolve_item_key(inventory_key)
+        item_data = ITEM_DATABASE.get(item_db_key) if item_db_key else None
 
         if not item_data:
             print(f"{inventory_key} does nothing.")
@@ -317,20 +339,17 @@ class Character:
     def equip_item(self, item_name: str) -> None:
         """Equip a weapon or armor from inventory."""
         name = item_name.strip()
-        inventory_key = name.title()
+        inventory_key = resolve_item_key(name) or name.title()
 
         if self.inventory.get(inventory_key, 0) <= 0:
             print(f"No {inventory_key} in inventory.")
             return
 
-        # Find the item in database
-        candidates = [inventory_key, name, name.lower(), name.lower().replace(" ", "_")]
-        item_data = None
-        for cand in candidates:
-            if cand in ITEM_DATABASE:
-                item_data = ITEM_DATABASE[cand]
-                inventory_key = cand  # Use the found key
-                break
+        # Find canonical key in database
+        item_db_key = resolve_item_key(name) or resolve_item_key(inventory_key)
+        item_data = ITEM_DATABASE.get(item_db_key) if item_db_key else None
+        if item_db_key:
+            inventory_key = item_db_key
 
         if not item_data:
             print(f"{name} not found in database.")

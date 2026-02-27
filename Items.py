@@ -194,8 +194,8 @@ ITEM_DATABASE = {
         },
         rarity="Mythic",
     ),
-    "Ice sword": Item(
-        name="Ice sword",
+    "Ice Sword": Item(
+        name="Ice Sword",
         item_type="weapon",
         bonuses={"attack": 12},
         price=800,

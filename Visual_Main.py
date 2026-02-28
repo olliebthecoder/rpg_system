@@ -112,6 +112,26 @@ def perform_attack(attacker, defender):
     }
 
 
+def enemy_action_text(enemy, action):
+    archetype = getattr(enemy, "archetype", "")
+    if action == "defend":
+        if archetype == "Tank":
+            return f"{enemy.name} BRACES(defend)."
+        if archetype == "Assassin":
+            return f"{enemy.name} hides(defend)."
+        if archetype == "Bruiser":
+            return f"{enemy.name} protects themself."
+        return f"{enemy.name} defended."
+    if action == "attack":
+        if archetype == "Tank":
+            return f"{enemy.name} charges!"
+        if archetype == "Assassin":
+            return f"{enemy.name} strikes!"
+        if archetype == "Bruiser":
+            return f"{enemy.name} swings!"
+    return f"{enemy.name} attacked."
+
+
 def _effect_signature(character):
     sig = []
     for eff in getattr(character, "status_effects", []):
@@ -1059,7 +1079,7 @@ while running:
             enemy_action = decide_enemy_action(enemy, player)
             if enemy_action == "defend":
                 enemy.defend()
-                add_log(f"{enemy.name} defended.")
+                add_log(enemy_action_text(enemy, "defend"))
             else:
                 result = perform_attack(enemy, player)
                 damage = result["damage"]
@@ -1067,13 +1087,17 @@ while running:
                     player_flash_timer = 10
                     add_damage_popup("player", damage)
                     if result["crit"]:
-                        add_log(f"CRIT! {enemy.name} hit you for {int(damage)}.")
+                        add_log(
+                            f"CRIT! {enemy_action_text(enemy, 'attack')} ({int(damage)} dmg)"
+                        )
                     else:
-                        add_log(f"{enemy.name} hit you for {int(damage)}.")
+                        add_log(
+                            f"{enemy_action_text(enemy, 'attack')} ({int(damage)} dmg)"
+                        )
                 elif result["dodged"]:
                     add_log(f"You dodged {enemy.name}'s attack.")
                 else:
-                    add_log(f"{enemy.name} attacked.")
+                    add_log(enemy_action_text(enemy, "attack"))
 
             if not player.alive() or not enemy.alive():
                 handle_battle_end()

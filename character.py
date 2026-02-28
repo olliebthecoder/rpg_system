@@ -436,9 +436,17 @@ class Character:
         self.temp_defense_buff = buff
         self.defense += buff
         self.is_defending = True
-        print(
-            f"{self.name} is defending! Defense increased to {self.defense} for this turn."
-        )
+        archetype = getattr(self, "archetype", "")
+        if archetype == "Tank":
+            print(f"{self.name} BRACES(defend)!")
+        elif archetype == "Assassin":
+            print(f"{self.name} hides(defend)!")
+        elif archetype == "Bruiser":
+            print(f"{self.name} protects themself.")
+        else:
+            print(
+                f"{self.name} is defending! Defense increased to {self.defense} for this turn."
+            )
 
     def end_defend(self):
         if self.is_defending:
@@ -567,7 +575,21 @@ class Character:
             print(f"{other.name} DODGED {self.name}'s attack! (Roll: {dodge_roll})\n")
             return
 
+        archetype = getattr(self, "archetype", "")
+        if archetype == "Tank":
+            print(f"{self.name} charges!")
+        elif archetype == "Assassin":
+            print(f"{self.name} strikes!")
+        elif archetype == "Bruiser":
+            print(f"{self.name} swings!")
+
         damage = self.attack_power
+        if archetype == "Bruiser":
+            hp_ratio = 1.0 if self.max_health <= 0 else (self.health / self.max_health)
+            if hp_ratio <= 0.35:
+                damage *= 1.2
+        elif archetype == "Glass Cannon":
+            damage *= 1.15
         # ---- DEFENSE (Percentage Based) ----
         defense_percent = max(0, min(75, other.defense))
 
@@ -579,6 +601,8 @@ class Character:
         # ------ Critical hit formula ----------------
 
         crit_chance = self.crit_chance
+        if archetype == "Assassin":
+            crit_chance += 10
         crit_multiplier = 2.0
 
         # Weapon-level crit tuning:
@@ -597,6 +621,12 @@ class Character:
             print("💥 CRITICAL HIT!")
 
             # This code applies damage
+        other_archetype = getattr(other, "archetype", "")
+        if other_archetype == "Glass Cannon":
+            final_damage = int(final_damage * 1.10)
+        if other_archetype == "Tank" and getattr(other, "is_defending", False):
+            # Extra mitigation for Tank while defending.
+            final_damage = int(final_damage * 0.90)
         other.health -= final_damage
         if other.health < 0:
             other.health = 0

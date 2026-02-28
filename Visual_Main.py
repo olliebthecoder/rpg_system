@@ -98,6 +98,62 @@ def add_log(text):
     battle_log_scroll = 0
 
 
+def get_battle_log_line_color(line):
+    lower = line.lower()
+
+    # Effect/status-specific colors.
+    effect_colors = [
+        ("burn", (255, 150, 90)),
+        ("poison", (145, 235, 145)),
+        ("freeze", (145, 220, 255)),
+        ("bleed", (255, 120, 120)),
+        ("lightning", (255, 225, 120)),
+        ("weaken", (240, 200, 130)),
+        ("armor break", (230, 190, 140)),
+        ("afflicted", (255, 220, 140)),
+        ("recovered", (165, 235, 175)),
+    ]
+    for key, color in effect_colors:
+        if key in lower:
+            return color
+
+    # Enemy actions: red.
+    enemy_action_tokens = [
+        " hit you",
+        " attacked",
+        " defended",
+        " braces(defend)",
+        " hides(defend)",
+        " protects themself",
+        " charges",
+        " strikes",
+        " swings",
+    ]
+    if "crit!" in lower and "you hit" not in lower:
+        return (255, 125, 125)
+    if any(token in lower for token in enemy_action_tokens):
+        return (245, 130, 130)
+
+    # Player actions: green.
+    player_action_tokens = [
+        "you attacked",
+        "you defended",
+        "you ended your turn",
+        "used ",
+        "equipped ",
+        "unequipped",
+        "bought ",
+        "saved game",
+    ]
+    if "crit! you hit" in lower:
+        return (130, 255, 160)
+    if any(token in lower for token in player_action_tokens):
+        return (140, 235, 145)
+
+    # Everything else: blue/system.
+    return (150, 190, 255)
+
+
 def perform_attack(attacker, defender):
     before_hp = defender.health
     buf = io.StringIO()
@@ -1205,16 +1261,15 @@ while running:
             row = pygame.Rect(log_panel.x + 6, y - 1, log_panel.width - 12, 16)
             if i % 2 == 0:
                 pygame.draw.rect(screen, (36, 40, 52), row, border_radius=4)
-            color = (220, 220, 220)
-            if "CRIT!" in line:
-                color = (255, 145, 125)
-            elif "dodged" in line.lower():
-                color = (170, 200, 245)
-            elif "afflicted" in line.lower():
-                color = (240, 215, 145)
-            elif "recovered" in line.lower():
-                color = (165, 235, 175)
-            draw_text(f"- {line}", log_panel.x + 10, y, color=color, use_small=True)
+            color = get_battle_log_line_color(line)
+            line_number = start_idx + i + 1
+            draw_text(
+                f"{line_number:03d}. {line}",
+                log_panel.x + 10,
+                y,
+                color=color,
+                use_small=True,
+            )
         if max_scroll > 0:
             draw_text(
                 "Scroll wheel over log to view older entries",

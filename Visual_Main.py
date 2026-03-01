@@ -67,6 +67,10 @@ preview_item_key = None
 preview_scroll_rect = pygame.Rect(0, 0, 0, 0)
 ninja_sprite_frames = []
 ninja_sprite_notice_shown = False
+tank_enemy_sprite_frames = []
+player_hp_bar_sprite = None
+enemy_hp_bar_sprite = None
+battle_log_panel_sprite = None
 
 
 def get_battle_action_buttons():
@@ -261,18 +265,43 @@ def add_damage_popup(target_side, amount):
 
 
 def get_battle_log_panel_rect():
-    return pygame.Rect(40, 366, 820, 126)
+    return pygame.Rect(50, 350, 800, 150)
 
 
-def draw_hp_bar(x, y, width, height, current_hp, max_hp, flash_timer):
-    pygame.draw.rect(screen, (55, 55, 55), (x, y, width, height), border_radius=6)
+def draw_hp_bar(x, y, width, height, current_hp, max_hp, flash_timer, bar_sprite=None):
     ratio = 0 if max_hp <= 0 else max(0.0, min(1.0, current_hp / max_hp))
     fill_width = int(width * ratio)
+
+    if bar_sprite:
+        # Draw dark background lane then clip the bar sprite by current health ratio.
+        pygame.draw.rect(screen, (28, 28, 28), (x, y, width, height), border_radius=6)
+        scaled = pygame.transform.smoothscale(bar_sprite, (width, height))
+        if fill_width > 0:
+            area = pygame.Rect(0, 0, fill_width, height)
+            screen.blit(scaled, (x, y), area=area)
+        if flash_timer > 0:
+            flash = pygame.Surface((width, height), pygame.SRCALPHA)
+            flash.fill((255, 70, 70, 80))
+            screen.blit(flash, (x, y))
+        return
+
+    pygame.draw.rect(screen, (55, 55, 55), (x, y, width, height), border_radius=6)
     hp_color = (50, 190, 80) if flash_timer <= 0 else (255, 120, 120)
     pygame.draw.rect(screen, hp_color, (x, y, fill_width, height), border_radius=6)
     pygame.draw.rect(
         screen, (200, 200, 200), (x, y, width, height), width=2, border_radius=6
     )
+
+
+def load_ui_sprite(candidates):
+    for path in candidates:
+        if not os.path.exists(path):
+            continue
+        try:
+            return pygame.image.load(path).convert_alpha()
+        except Exception:
+            continue
+    return None
 
 
 def get_model_palette(name: str, is_enemy: bool = False):
@@ -395,6 +424,22 @@ def load_ninja_sprite_frames():
     return build_inline_ninja_frames(scale=(96, 96))
 
 
+def load_tank_enemy_sprite_frames():
+    candidates = [
+        "assets/sprites/enemy_tank_sheet.png",
+        "assets/sprites/tank_enemy_sheet.png",
+        "assets/sprites/tank_sheet.png",
+        "assets/enemy_tank_sheet.png",
+        "enemy_tank_sheet.png",
+        "tank_sheet.png",
+    ]
+    for path in candidates:
+        frames = load_vertical_sprite_sheet(path, frame_count=2, scale=(96, 96))
+        if frames:
+            return frames
+    return []
+
+
 def draw_player_model(character):
     if character and "ninja" in character.name.lower() and ninja_sprite_frames:
         frame_index = (pygame.time.get_ticks() // 220) % len(ninja_sprite_frames)
@@ -405,6 +450,17 @@ def draw_player_model(character):
         draw_character_model(
             220, 225, get_model_palette(character.name, is_enemy=False)
         )
+
+
+def draw_enemy_model(character):
+    archetype = str(getattr(character, "archetype", "")).lower() if character else ""
+    if character and archetype == "tank" and tank_enemy_sprite_frames:
+        frame_index = (pygame.time.get_ticks() // 220) % len(tank_enemy_sprite_frames)
+        frame = tank_enemy_sprite_frames[frame_index]
+        rect = frame.get_rect(center=(680, 272))
+        screen.blit(frame, rect)
+    else:
+        draw_character_model(680, 225, get_model_palette(character.name, is_enemy=True))
 
 
 def start_battle(builder):
@@ -941,6 +997,18 @@ def draw_inventory_panel(character, selected_index):
 
 
 ninja_sprite_frames = load_ninja_sprite_frames()
+tank_enemy_sprite_frames = load_tank_enemy_sprite_frames()
+player_hp_bar_sprite = None
+enemy_hp_bar_sprite = None
+battle_log_panel_sprite = load_ui_sprite(
+    [
+        "assets/sprites/Proto_battlelog.png",
+        "assets/sprites/proto_battlelog.png",
+        "assets/Proto_battlelog.png",
+        "assets/proto_battlelog.png",
+        "proto_battlelog.png",
+    ]
+)
 
 
 running = True
@@ -1286,7 +1354,14 @@ while running:
         draw_text(f"Player: {player.name.title()}", 40, 30)
         draw_text(f"Player HP: {int(player.health)}", 40, 70)
         draw_hp_bar(
-            40, 95, 260, 18, player.health, player.max_health, player_flash_timer
+            40,
+            95,
+            260,
+            18,
+            player.health,
+            player.max_health,
+            player_flash_timer,
+            player_hp_bar_sprite,
         )
         draw_text(
             f"Weapon: {player.equipped_weapon or 'None'}", 40, 120, use_small=True
@@ -1302,7 +1377,16 @@ while running:
             enemy_role = f"{enemy_role} (BOSS)"
         draw_text(f"Type: {enemy_role}", 560, 52, color=(255, 210, 170), use_small=True)
         draw_text(f"Enemy HP: {int(enemy.health)}", 560, 70)
-        draw_hp_bar(560, 95, 260, 18, enemy.health, enemy.max_health, enemy_flash_timer)
+        draw_hp_bar(
+            560,
+            95,
+            260,
+            18,
+            enemy.health,
+            enemy.max_health,
+            enemy_flash_timer,
+            enemy_hp_bar_sprite,
+        )
         draw_text(
             f"Enemy Weapon: {enemy.equipped_weapon or 'None'}",
             560,
@@ -1334,19 +1418,27 @@ while running:
 
         # Player model (uses ninja sprite sheet when available).
         draw_player_model(player)
-        # Enemy model placeholder.
-        draw_character_model(680, 225, get_model_palette(enemy.name, is_enemy=True))
+        # Enemy model (uses tank sprite sheet for Tank archetype when available).
+        draw_enemy_model(enemy)
 
         log_panel = get_battle_log_panel_rect()
-        pygame.draw.rect(screen, (30, 34, 44), log_panel, border_radius=10)
-        pygame.draw.rect(screen, (110, 128, 168), log_panel, width=2, border_radius=10)
-        draw_text(
-            "BATTLE LOG",
-            log_panel.x + 10,
-            log_panel.y + 8,
-            color=(170, 210, 255),
-            use_small=True,
-        )
+        if battle_log_panel_sprite:
+            panel_img = pygame.transform.smoothscale(
+                battle_log_panel_sprite, (log_panel.width, log_panel.height)
+            )
+            screen.blit(panel_img, (log_panel.x, log_panel.y))
+        else:
+            pygame.draw.rect(screen, (30, 34, 44), log_panel, border_radius=10)
+            pygame.draw.rect(
+                screen, (110, 128, 168), log_panel, width=2, border_radius=10
+            )
+            draw_text(
+                "BATTLE LOG",
+                log_panel.x + 10,
+                log_panel.y + 8,
+                color=(170, 210, 255),
+                use_small=True,
+            )
         visible_lines = 6
         max_scroll = max(0, len(battle_log) - visible_lines)
         battle_log_scroll = max(0, min(max_scroll, battle_log_scroll))

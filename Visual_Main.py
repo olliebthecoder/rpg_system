@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 from contextlib import redirect_stdout
 import pygame
@@ -64,6 +65,8 @@ preview_scroll_offset = 0
 preview_max_scroll = 0
 preview_item_key = None
 preview_scroll_rect = pygame.Rect(0, 0, 0, 0)
+ninja_sprite_frames = []
+ninja_sprite_notice_shown = False
 
 
 def get_battle_action_buttons():
@@ -322,8 +325,90 @@ def draw_character_model(x: int, y: int, palette: dict):
     pygame.draw.rect(screen, palette["legs"], (x + 2, y + 60, 10, 34), border_radius=4)
 
 
+def load_vertical_sprite_sheet(path, frame_count=2, scale=(96, 96)):
+    if not os.path.exists(path):
+        return []
+    try:
+        sheet = pygame.image.load(path).convert_alpha()
+    except Exception:
+        return []
+    frame_h = sheet.get_height() // frame_count
+    frame_w = sheet.get_width()
+    if frame_h <= 0 or frame_w <= 0:
+        return []
+    frames = []
+    for i in range(frame_count):
+        rect = pygame.Rect(0, i * frame_h, frame_w, frame_h)
+        frame = sheet.subsurface(rect).copy()
+        if scale:
+            frame = pygame.transform.scale(frame, scale)
+        frames.append(frame)
+    return frames
+
+
+def build_inline_ninja_frames(scale=(96, 96)):
+    """Fallback 2-frame ninja sprite (matches the shared red/sword style)."""
+    frames = []
+    for step in range(2):
+        surf = pygame.Surface((24, 32), pygame.SRCALPHA)
+        red = (220, 35, 35)
+        steel = (185, 185, 185)
+        shadow = (40, 40, 40)
+
+        # Body/head
+        pygame.draw.rect(surf, red, (8, 8, 8, 10), border_radius=2)
+        pygame.draw.circle(surf, red, (12, 6), 3)
+
+        # Legs (alternate stance per frame)
+        if step == 0:
+            pygame.draw.line(surf, red, (10, 18), (5, 27), 3)
+            pygame.draw.line(surf, red, (14, 18), (17, 27), 3)
+        else:
+            pygame.draw.line(surf, red, (10, 18), (7, 27), 3)
+            pygame.draw.line(surf, red, (14, 18), (19, 25), 3)
+
+        # Arms + sword
+        pygame.draw.line(surf, red, (8, 12), (4, 14), 2)
+        pygame.draw.line(surf, red, (16, 12), (20, 10), 2)
+        pygame.draw.line(surf, steel, (18, 11), (23, 6), 2)
+        pygame.draw.line(surf, shadow, (16, 13), (18, 11), 2)
+
+        if scale:
+            surf = pygame.transform.scale(surf, scale)
+        frames.append(surf)
+    return frames
+
+
+def load_ninja_sprite_frames():
+    candidates = [
+        "assets/sprites/ninja_sheet.png",
+        "assets/sprites/ninja.png",
+        "assets/ninja_sheet.png",
+        "assets/ninja.png",
+        "ninja_sheet.png",
+        "ninja.png",
+    ]
+    for path in candidates:
+        frames = load_vertical_sprite_sheet(path, frame_count=2, scale=(96, 96))
+        if frames:
+            return frames
+    return build_inline_ninja_frames(scale=(96, 96))
+
+
+def draw_player_model(character):
+    if character and "ninja" in character.name.lower() and ninja_sprite_frames:
+        frame_index = (pygame.time.get_ticks() // 220) % len(ninja_sprite_frames)
+        frame = ninja_sprite_frames[frame_index]
+        rect = frame.get_rect(center=(220, 272))
+        screen.blit(frame, rect)
+    else:
+        draw_character_model(
+            220, 225, get_model_palette(character.name, is_enemy=False)
+        )
+
+
 def start_battle(builder):
-    global player, enemy, game_state, message, player_turn_started, player_action_used
+    global player, enemy, game_state, message, player_turn_started, player_action_used, ninja_sprite_notice_shown
     player = builder()
     player.load()
     player.reset_health()
@@ -335,6 +420,13 @@ def start_battle(builder):
     battle_log.clear()
     add_log(f"Started run with {player.name.title()}.")
     add_log(f"Enemy spawned: {enemy.name}.")
+    if (
+        "ninja" in player.name.lower()
+        and not ninja_sprite_frames
+        and not ninja_sprite_notice_shown
+    ):
+        add_log("Ninja sprite sheet not found. Using placeholder model.")
+        ninja_sprite_notice_shown = True
 
 
 def start_next_battle():
@@ -848,6 +940,9 @@ def draw_inventory_panel(character, selected_index):
     )
 
 
+ninja_sprite_frames = load_ninja_sprite_frames()
+
+
 running = True
 while running:
     clock.tick(60)
@@ -1237,8 +1332,9 @@ while running:
             )
         draw_active_effects("Enemy", enemy.status_effects, 560, 196)
 
-        # Placeholder battle models (player/enemy).
-        draw_character_model(220, 225, get_model_palette(player.name, is_enemy=False))
+        # Player model (uses ninja sprite sheet when available).
+        draw_player_model(player)
+        # Enemy model placeholder.
         draw_character_model(680, 225, get_model_palette(enemy.name, is_enemy=True))
 
         log_panel = get_battle_log_panel_rect()
